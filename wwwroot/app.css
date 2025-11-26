@@ -8,12 +8,27 @@ a, .btn-link {
 
 .btn-primary {
     color: #fff;
-    background-color: #ffffff;
+    background-color: #133956;
     border-color: #133956;
 }
 
+.btn-primary:hover {
+    color: #fff;
+    background-color: #fec707;
+    border-color: #f07f1a ;
+}
+
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #fec707;
+}
+
+.nav-link:hover {
+    color: #ffffff !important;
+    background-color: #fec707 !important;
+}
+
+.nav-link:hover span {
+    color: #fec707 !important;
 }
 
 .content {
@@ -42,9 +57,9 @@ h1:focus {
     color: white;
 }
 
-    .blazor-error-boundary::after {
-        content: "An error has occurred."
-    }
+.blazor-error-boundary::after {
+    content: "An error has occurred.";
+}
 
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
@@ -57,4 +72,246 @@ h1:focus {
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
+}
+
+/* ===================== */
+/*   Meals page styles   */
+/* ===================== */
+
+.meals-title {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    color: #f07f1a;
+    font-weight: 1000;
+}
+
+.meals-empty {
+    margin-top: 3rem;
+    text-align: center;
+}
+
+.meals-empty h2 {
+    font-weight: 700;
+    color: #f07f1a;
+    margin-bottom: 1rem;
+}
+
+.meals-empty-icon {
+    margin-bottom: 1rem;
+}
+
+/* base style */
+.meals-empty-btn,
+.meal-add-btn {
+    background-color: #133956;
+    border-color: #133956;
+    border-radius: 999px;
+    padding: 0.4rem 1.5rem;
+    color: #ffffff;
+}
+
+/* hover: orange */
+.meals-empty-btn:hover,
+.meal-add-btn:hover,
+.meal-add-btn:focus {
+    background-color: #f07f1a;
+    border-color: #f07f1a;
+    color: #ffffff;
+}
+
+/* grid when there are meals */
+.meals-grid {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: flex-start;
+}
+
+.meal-card {
+    width: 220px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    background-color: #ffffff;
+    text-align: center;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    cursor: pointer;
+}
+
+.meal-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+.meal-card:hover .meal-card-name {
+    background-color: #fec707 !important;
+    color: #ffffff !important;
+}
+
+.meal-card img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+}
+
+.meal-card-name {
+    padding: 0.5rem 0.75rem 0.75rem;
+    background-color: #133956;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+/* Add-more card */
+.meal-card-add {
+    border: 2px dashed #133956;
+    background-color: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    height: 200px;
+    gap: 0.3rem;
+}
+
+.meal-add-plus {
+    font-size: 3rem;
+    margin-bottom: 0;
+}
+
+/* Add-meal form layout */
+
+.meal-form-container {
+    margin-top: 2rem;
+}
+
+.meal-form-top {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+/* Left image box */
+.meal-image-box {
+    width: 230px;
+    height: 220px;
+    border: 2px solid #555555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.meal-image-placeholder {
+    text-align: center;
+}
+
+.meal-image-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.3rem;
+}
+
+.meal-image-text {
+    font-weight: 500;
+}
+
+/* Right side fields */
+.meal-form-right {
+    flex: 1;
+}
+
+.meal-input-name {
+    border-radius: 999px;
+    border-width: 2px;
+}
+
+.meal-input-description {
+    height: 160px;
+    border-radius: 18px;
+    border-width: 2px;
+}
+
+/* Ingredients full-width box */
+.meal-ingredients-box {
+    margin-top: 1rem;
+}
+
+.meal-input-ingredients {
+    min-height: 160px;
+    border-width: 2px;
+}
+
+/* Bottom buttons + price */
+.meal-form-buttons {
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.meal-price-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.meal-input-price {
+    width: 120px;
+}
+
+/* Make the whole image box clickable for file picker */
+.meal-image-box {
+    position: relative;
+}
+
+.meal-image-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.meal-image-input:hover,
+.meal-image-input:focus,
+.meal-image-input:active {
+    outline: none;
+    box-shadow: none;
+    background: #fec707;
+}
+
+.mt-3, h5{
+    margin-top: 1rem !important;
+    color: #f07f1a;
+}
+
+/* Preview image when selected */
+.meal-image-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; 
+    display: block;
+}
+
+/* Details panel under the grid */
+.meal-details {
+    margin-top: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    background-color: #ffffff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    max-width: 600px;
+}
+
+/* Cook input alignment */
+.meal-cook-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.meal-input-cook {
+    width: 180px;
 }

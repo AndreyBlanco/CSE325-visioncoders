@@ -1,0 +1,155 @@
+@page "/meals/edit/{Id}"
+@rendermode InteractiveServer
+@using CSE325_visioncoders.Models
+@using CSE325_visioncoders.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject MealService _mealService
+@inject IWebHostEnvironment Env
+@inject NavigationManager Nav
+
+<h3 class="meals-title">Edit Meal</h3>
+
+@if (meal is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="meal-form-container">
+        <EditForm Model="@meal" OnValidSubmit="SaveChanges">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="meal-form-top">
+                <!-- Image box -->
+                <div class="meal-image-box">
+                    <div class="meal-image-placeholder">
+                        @if (string.IsNullOrWhiteSpace(meal.ImageUrl))
+                        {
+                            <div class="meals-image-icon">
+                                <img src="img/add-image.png" alt="Cook's Hat - Add Image" width="200" />
+                            </div>
+                            <div class="meal-image-text">Add Image</div>
+                        }
+                        else
+                        {
+                            <img src="@meal.ImageUrl" class="meal-image-preview" />
+                        }
+
+                        <InputFile OnChange="HandleImageSelected" class="meal-image-input" />
+                    </div>
+                </div>
+
+                <!-- Name + Description -->
+                <div class="meal-form-right">
+                    <div class="mb-3">
+                        <InputText class="form-control meal-input-name"
+                                   @bind-Value="meal.Name"
+                                   placeholder="Name of the Meal" />
+                    </div>
+
+                    <div class="mb-3">
+                        <InputTextArea class="form-control meal-input-description"
+                                       @bind-Value="meal.Description"
+                                       placeholder="Description..." />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ingredients -->
+            <div class="meal-ingredients-box">
+                <InputTextArea class="form-control meal-input-ingredients"
+                               @bind-Value="meal.Ingredients"
+                               placeholder="Ingredients" />
+            </div>
+
+            <div class="meal-form-buttons">
+                <div class="meal-price-input">
+                    <label class="me-2">Price:</label>
+                    <InputNumber TValue="decimal" class="form-control meal-input-price"
+                                 @bind-Value="meal.Price" />
+                </div>
+
+                <div class="meal-cook-input">
+                    <label class="me-2">Cook:</label>
+                    <InputText class="form-control meal-input-cook"
+                               @bind-Value="meal.CookName"
+                               placeholder="Cook's name" />
+                </div>
+
+                <button class="btn btn-primary" type="submit">Save Changes</button>
+
+                <button type="button" class="btn btn-danger ms-2" @onclick="DeleteMeal">
+                    Delete Meal
+                </button>
+
+                <button type="button" class="btn btn-secondary ms-2" @onclick="GoBack">
+                    Back to Meals
+                </button>
+            </div>
+
+            <div class="mt-3">
+                <h5>Rating / Comments</h5>
+                <p><i>(Read-only – will come from customer reviews later.)</i></p>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = default!;
+
+    private Meal? meal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        meal = await _mealService.GetByIdAsync(Id);
+        if (meal is null)
+        {
+            // If not found, go back to list
+            Nav.NavigateTo("/meals");
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (meal is null) return;
+
+        await _mealService.UpdateAsync(meal);
+        Nav.NavigateTo("/meals");
+    }
+
+    private async Task DeleteMeal()
+    {
+        if (meal?.Id is null) return;
+
+        await _mealService.DeleteAsync(meal.Id);
+        Nav.NavigateTo("/meals");
+    }
+
+    private void GoBack()
+    {
+        Nav.NavigateTo("/meals");
+    }
+
+    private async Task HandleImageSelected(InputFileChangeEventArgs e)
+    {
+        if (meal is null) return;
+
+        var file = e.File;
+        if (file is null)
+            return;
+
+        var uploadsFolder = Path.Combine(Env.WebRootPath, "img", "meals");
+        Directory.CreateDirectory(uploadsFolder);
+
+        var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}";
+        var filePath = Path.Combine(uploadsFolder, fileName);
+
+        await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+        await using var fs = File.Create(filePath);
+        await stream.CopyToAsync(fs);
+
+        meal.ImageUrl = $"img/meals/{fileName}";
+    }
+}

@@ -1,16 +1,23 @@
 {
   "version": 2,
-  "dgSpecHash": "0gOHiB5GvME=",
+  "dgSpecHash": "BOUycu3SjLQ=",
   "success": true,
-  "projectFilePath": "C:\\Users\\sylam\\CSE325-visioncoders\\CSE325-visioncoders.csproj",
+  "projectFilePath": "C:\\Users\\OOSCA\\CSE325-visioncoders\\CSE325-visioncoders.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\sylam\\.nuget\\packages\\dnsclient\\1.6.1\\dnsclient.1.6.1.nupkg.sha512",
-    "C:\\Users\\sylam\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.0\\microsoft.aspnetcore.app.internal.assets.10.0.0.nupkg.sha512",
-    "C:\\Users\\sylam\\.nuget\\packages\\mongodb.bson\\3.5.1\\mongodb.bson.3.5.1.nupkg.sha512",
-    "C:\\Users\\sylam\\.nuget\\packages\\mongodb.driver\\3.5.1\\mongodb.driver.3.5.1.nupkg.sha512",
-    "C:\\Users\\sylam\\.nuget\\packages\\sharpcompress\\0.30.1\\sharpcompress.0.30.1.nupkg.sha512",
-    "C:\\Users\\sylam\\.nuget\\packages\\snappier\\1.0.0\\snappier.1.0.0.nupkg.sha512",
-    "C:\\Users\\sylam\\.nuget\\packages\\zstdsharp.port\\0.7.3\\zstdsharp.port.0.7.3.nupkg.sha512"
+    "C:\\Users\\OOSCA\\.nuget\\packages\\dnsclient\\1.6.1\\dnsclient.1.6.1.nupkg.sha512",
+    "C:\\Users\\OOSCA\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\2.0.0\\microsoft.extensions.logging.abstractions.2.0.0.nupkg.sha512",
+    "C:\\Users\\OOSCA\\.nuget\\packages\\microsoft.netcore.platforms\\5.0.0\\microsoft.netcore.platforms.5.0.0.nupkg.sha512",
+    "C:\\Users\\OOSCA\\.nuget\\packages\\microsoft.win32.registry\\5.0.0\\microsoft.win32.registry.5.0.0.nupkg.sha512",
+    "C:\\Users\\OOSCA\\.nuget\\packages\\mongodb.bson\\3.5.1\\mongodb.bson.3.5.1.nupkg.sha512",
+    "C:\\Users\\OOSCA\\.nuget\\packages\\mongodb.driver\\3.5.1\\mongodb.driver.3.5.1.nupkg.sha512",
+    "C:\\Users\\OOSCA\\.nuget\\packages\\sharpcompress\\0.30.1\\sharpcompress.0.30.1.nupkg.sha512",
+    "C:\\Users\\OOSCA\\.nuget\\packages\\snappier\\1.0.0\\snappier.1.0.0.nupkg.sha512",
+    "C:\\Users\\OOSCA\\.nuget\\packages\\system.buffers\\4.5.1\\system.buffers.4.5.1.nupkg.sha512",
+    "C:\\Users\\OOSCA\\.nuget\\packages\\system.memory\\4.5.5\\system.memory.4.5.5.nupkg.sha512",
+    "C:\\Users\\OOSCA\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\5.0.0\\system.runtime.compilerservices.unsafe.5.0.0.nupkg.sha512",
+    "C:\\Users\\OOSCA\\.nuget\\packages\\system.security.accesscontrol\\5.0.0\\system.security.accesscontrol.5.0.0.nupkg.sha512",
+    "C:\\Users\\OOSCA\\.nuget\\packages\\system.security.principal.windows\\5.0.0\\system.security.principal.windows.5.0.0.nupkg.sha512",
+    "C:\\Users\\OOSCA\\.nuget\\packages\\zstdsharp.port\\0.7.3\\zstdsharp.port.0.7.3.nupkg.sha512"
   ],
   "logs": []
 }

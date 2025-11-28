@@ -315,3 +315,36 @@ h1:focus {
 .meal-input-cook {
     width: 180px;
 }
+
+
+/* Calendar */
+.calendar-table-sm {
+    width: 100%;
+    background-color: #ffffff;
+}
+
+.calendar-cell-sm {
+    height: 80px;
+    cursor: pointer;
+    padding: 4px;
+    vertical-align: top;
+    font-size: 14px;
+}
+
+.calendar-cell-sm:hover {
+    background-color: #eef6ff;
+}
+
+.calendar-cell-selected {
+    border: 2px solid #0d6efd !important;
+    box-shadow: 0 0 4px rgba(13, 110, 253, 0.6);
+}
+
+.event-pill {
+    background-color: #007bff;
+    color: white;
+    padding: 2px 4px;
+    border-radius: 4px;
+    margin-top: 2px;
+    font-size: 12px;
+}

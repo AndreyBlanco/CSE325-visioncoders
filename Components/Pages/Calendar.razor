@@ -1,0 +1,183 @@
+@page "/calendar"
+@using CSE325_visioncoders.Models
+@inject CSE325_visioncoders.Services.CalendarService CalendarService
+
+<h3>Weekly Calendar</h3>
+
+<div class="d-flex align-items-center mb-3">
+    <button class="btn btn-outline-primary me-2" @onclick="PreviousWeek">◀ Previous</button>
+    <h4 class="m-0">@weekStart.ToString("dd MMM yyyy") - @weekEnd.ToString("dd MMM yyyy")</h4>
+    <button class="btn btn-outline-primary ms-2" @onclick="NextWeek">Next ▶</button>
+</div>
+
+<table class="table table-bordered calendar-table-sm">
+    <thead>
+        <tr>
+            @foreach (var dayName in dayNames)
+            {
+                <th class="text-center">@dayName</th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            @for (int i = 0; i < 7; i++)
+            {
+                var day = weekStart.AddDays(i);
+                var menu = menuByDate[day.Date];
+
+                <td class="calendar-cell-sm @(selectedDate == day.Date ? "calendar-cell-selected" : "")"
+                    @onclick="() => SelectDay(day)">
+                    <div class="d-flex justify-content-between">
+                        <strong>@day.Day</strong>
+                        <span class="badge bg-@GetStatusColor(menu.Status)">@menu.Status</span>
+                    </div>
+
+                    @foreach (var dish in menu.Dishes)
+                    {
+                        if (!string.IsNullOrWhiteSpace(dish.Name))
+                        {
+                            <div class="small">• @dish.Name</div>
+                        }
+                    }
+                </td>
+            }
+        </tr>
+    </tbody>
+</table>
+
+@if (selectedMenuDay is not null)
+{
+    <div class="card mt-4">
+        <div class="card-header">
+            Menu for @selectedMenuDay.Date.ToString("dddd dd MMMM")
+        </div>
+
+        <div class="card-body">
+            <div class="mb-3">
+                <label>Status</label>
+                <select class="form-select" @bind="selectedMenuDay.Status">
+                    <option value="@MenuDayStatus.Draft">Draft</option>
+                    <option value="@MenuDayStatus.Published">Published</option>
+                    <option value="@MenuDayStatus.Closed">Closed</option>
+                </select>
+            </div>
+
+            @foreach (var dish in selectedMenuDay.Dishes)
+            {
+                <div class="mb-3 border p-2">
+                    <h6>Dish @dish.Index</h6>
+
+                    <label>Name</label>
+                    <input class="form-control" @bind="dish.Name" />
+
+                    <label class="mt-2">Notes</label>
+                    <input class="form-control" @bind="dish.Notes" />
+                </div>
+            }
+
+            <button class="btn btn-primary" @onclick="SaveMenu">Save</button>
+        </div>
+    </div>
+}
+
+@code {
+    private DateTime weekStart;
+    private DateTime weekEnd;
+    private DateTime selectedDate;
+
+    private Dictionary<DateTime, MenuDay> menuByDate = new();
+    private MenuDay? selectedMenuDay;
+
+    private readonly string[] dayNames = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+
+    protected override void OnInitialized()
+    {
+        var today = DateTime.Today;
+
+        weekStart = StartOfWeek(today);
+        weekEnd = weekStart.AddDays(6);
+
+        LoadWeek();
+        SelectDay(today);
+    }
+
+    private void LoadWeek()
+    {
+        menuByDate.Clear();
+
+        for (int i = 0; i < 7; i++)
+        {
+            var day = weekStart.AddDays(i).Date;
+            var md = CalendarService.GetOrCreateMenuDay(day);
+            md.EnsureThreeDishes();
+            menuByDate[day] = md;
+        }
+    }
+
+    private void PreviousWeek()
+    {
+        weekStart = weekStart.AddDays(-7);
+        weekEnd = weekStart.AddDays(6);
+        LoadWeek();
+        SelectDay(weekStart);
+    }
+
+    private void NextWeek()
+    {
+        weekStart = weekStart.AddDays(7);
+        weekEnd = weekStart.AddDays(6);
+        LoadWeek();
+        SelectDay(weekStart);
+    }
+
+    private void SelectDay(DateTime day)
+    {
+        selectedDate = day.Date;
+
+        var original = CalendarService.GetOrCreateMenuDay(selectedDate);
+        original.EnsureThreeDishes();
+
+        selectedMenuDay = new MenuDay
+        {
+            Id = original.Id,
+            Date = original.Date,
+            Status = original.Status,
+            PublishedAt = original.PublishedAt,
+            ClosedAt = original.ClosedAt,
+            Dishes = original.Dishes
+        .Select(d => new MenuDish
+        {
+            Index = d.Index,
+            Name = d.Name,
+            Notes = d.Notes
+        }).ToList()
+        };
+    }
+
+    private void SaveMenu()
+    {
+        if (selectedMenuDay == null) return;
+
+        selectedMenuDay.EnsureThreeDishes();
+        CalendarService.SaveMenuDay(selectedMenuDay);
+
+        LoadWeek();
+        SelectDay(selectedMenuDay.Date);
+    }
+
+    private static DateTime StartOfWeek(DateTime date)
+    {
+        int diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
+        return date.AddDays(-diff).Date;
+    }
+
+    private string GetStatusColor(MenuDayStatus status) =>
+    status switch
+    {
+        MenuDayStatus.Draft => "secondary",
+        MenuDayStatus.Published => "success",
+        MenuDayStatus.Closed => "dark",
+        _ => "secondary"
+    };
+}

@@ -1,0 +1,215 @@
+@page "/calendar/month"
+
+@using CSE325_visioncoders.Models
+@using CSE325_visioncoders.Services
+@inject CalendarService CalendarService
+@inject NavigationManager Nav
+
+<!-- HEADER -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="m-0">Monthly Calendar — @currentMonth.ToString("MMMM yyyy")</h3>
+
+    <button class="btn btn-outline-secondary" @onclick="GoToWeekly">
+        ← Back to Weekly View
+    </button>
+</div>
+
+<!-- MONTH SELECTOR -->
+<div class="d-flex align-items-center mb-3">
+    <button class="btn btn-outline-primary me-2" @onclick="PreviousMonth">◀ Previous</button>
+
+    <h4 class="m-0">@currentMonth.ToString("MMMM yyyy")</h4>
+
+    <button class="btn btn-outline-primary ms-2" @onclick="NextMonth">Next ▶</button>
+</div>
+
+<!-- MONTH GRID -->
+<table class="table table-bordered month-table">
+    <thead>
+        <tr>
+            @foreach (var d in dayNames)
+            {
+                <th class="text-center">@d</th>
+            }
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var week in weeks)
+        {
+            <tr>
+                @foreach (var day in week)
+                {
+                    bool isCurrentMonth = day.Month == currentMonth.Month;
+                    bool isToday = day == DateTime.Today;
+
+                    <td class="month-cell @(isCurrentMonth ? "" : "month-cell-other") @(isToday ? "today" : "")">
+
+                        <!-- DATE -->
+                        <div class="d-flex justify-content-between">
+                            <strong>@day.Day</strong>
+
+                            @if (menuByDate.TryGetValue(day, out var md) && md.ConfirmationsCount > 0)
+                            {
+                                <span class="badge bg-info">@md.ConfirmationsCount</span>
+                            }
+                        </div>
+
+                        <!-- MENU DISHES -->
+                        @if (menuByDate.TryGetValue(day, out var menu))
+                        {
+                            @foreach (var dish in menu.Dishes)
+                            {
+                                if (!string.IsNullOrWhiteSpace(dish.Name))
+                                {
+                                    <div class="small text-truncate">• @dish.Name</div>
+                                }
+                            }
+                        }
+
+                        <!-- EVENTS -->
+                        @{
+                            var evs = CalendarService.GetEventsByDay(day).ToList();
+                        }
+
+                        @if (evs.Any())
+                        {
+                            <div class="mt-1 small">
+                                @foreach (var ev in evs.Take(3))
+                                {
+                                    <span title="@($"{ev.Title} ({ev.Start:HH:mm})")">
+                                        @GetEventIcon(ev.Category)
+                                    </span>
+                                }
+
+                                @if (evs.Count > 3)
+                                {
+                                    <span title="@($"{evs.Count - 3} more events")">
+                                        +@((evs.Count - 3))
+                                    </span>
+                                }
+                            </div>
+                        }
+
+                        <!-- VIEW DAY BUTTON -->
+                        <button class="btn btn-sm btn-outline-secondary mt-2" @onclick="() => GoToDay(day)">
+                            View Day →
+                        </button>
+
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+
+    private DateTime currentMonth = DateTime.Today;
+
+    private List<List<DateTime>> weeks = new();
+    private Dictionary<DateTime, MenuDay> menuByDate = new();
+
+    private string[] dayNames = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+
+    protected override void OnInitialized()
+    {
+        BuildMonthGrid();
+    }
+
+    private void BuildMonthGrid()
+    {
+        weeks.Clear();
+        menuByDate.Clear();
+
+        // 1. Calculate first day of the grid
+        var firstDay = new DateTime(currentMonth.Year, currentMonth.Month, 1);
+        int diff = (7 + (int)firstDay.DayOfWeek - 1) % 7;
+
+        var startGrid = firstDay.AddDays(-diff);
+
+        // 2. Build 6 weeks (42 days)
+        for (int w = 0; w < 6; w++)
+        {
+            var week = new List<DateTime>();
+            for (int d = 0; d < 7; d++)
+                week.Add(startGrid.AddDays(w * 7 + d));
+
+            weeks.Add(week);
+        }
+
+        // 3. Load menus for visible range
+        var start = weeks.First().First();
+        var end = weeks.Last().Last();
+
+        var menus = CalendarService.GetMenuForRange(start, end);
+
+        foreach (var m in menus)
+            menuByDate[m.Date] = m;
+    }
+
+    private void PreviousMonth()
+    {
+        currentMonth = currentMonth.AddMonths(-1);
+        BuildMonthGrid();
+    }
+
+    private void NextMonth()
+    {
+        currentMonth = currentMonth.AddMonths(1);
+        BuildMonthGrid();
+    }
+
+    private void GoToWeekly()
+    {
+        Nav.NavigateTo("/calendar");
+    }
+
+    private void GoToDay(DateTime day)
+    {
+        Nav.NavigateTo($"/calendar/day/{day:yyyy-MM-dd}");
+    }
+
+    private string GetEventIcon(CalendarEventCategory cat)
+    {
+        return cat switch
+        {
+            CalendarEventCategory.Purchase => "🛒",
+            CalendarEventCategory.Delivery => "📦",
+            CalendarEventCategory.Shift => "👨‍🍳",
+            CalendarEventCategory.Maintenance => "🛠️",
+            CalendarEventCategory.Admin => "📋",
+            CalendarEventCategory.Meeting => "🗓️",
+            _ => "🔹"
+        };
+    }
+}
+
+<style>
+    .month-table {
+        width: 100%;
+        background-color: #ffffff;
+    }
+
+    .month-cell {
+        height: 130px;
+        padding: 6px;
+        vertical-align: top;
+        cursor: pointer;
+        font-size: 13px;
+    }
+
+    .month-cell:hover {
+        background-color: #eef6ff;
+    }
+
+    .month-cell-other {
+        background-color: #f4f4f4;
+        color: #888;
+    }
+
+    .today {
+        outline: 3px solid #0d6efd;
+        background-color: #eaf2ff !important;
+    }
+</style>

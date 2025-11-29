@@ -239,19 +239,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\andyg\\.nuget\\packages\\": {}
+    "C:\\Users\\OOSCA\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Pathway\\CSE325\\project\\CSE325-visioncoders\\CSE325-visioncoders.csproj",
+      "projectUniqueName": "C:\\Users\\OOSCA\\CSE325-visioncoders\\CSE325-visioncoders.csproj",
       "projectName": "CSE325-visioncoders",
-      "projectPath": "D:\\Pathway\\CSE325\\project\\CSE325-visioncoders\\CSE325-visioncoders.csproj",
-      "packagesPath": "C:\\Users\\andyg\\.nuget\\packages\\",
-      "outputPath": "D:\\Pathway\\CSE325\\project\\CSE325-visioncoders\\obj\\",
+      "projectPath": "C:\\Users\\OOSCA\\CSE325-visioncoders\\CSE325-visioncoders.csproj",
+      "packagesPath": "C:\\Users\\OOSCA\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\OOSCA\\CSE325-visioncoders\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\andyg\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\OOSCA\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"

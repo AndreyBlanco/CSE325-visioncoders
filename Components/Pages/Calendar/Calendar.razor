@@ -1,0 +1,480 @@
+@page "/calendar"
+
+@using CSE325_visioncoders.Models
+@using CSE325_visioncoders.Services
+@inject CalendarService CalendarService
+@inject NavigationManager Nav
+
+<!-- GLOBAL ALERTS (today / tomorrow) -->
+@if (!string.IsNullOrEmpty(todayAlert) || !string.IsNullOrEmpty(tomorrowAlert))
+{
+    <div class="mb-3">
+        @if (!string.IsNullOrEmpty(todayAlert))
+        {
+            <div class="alert alert-info">
+                @todayAlert
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(tomorrowAlert))
+        {
+            <div class="alert alert-secondary">
+                @tomorrowAlert
+            </div>
+        }
+    </div>
+}
+
+<!-- HEADER WITH MONTH BUTTON -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="m-0">Weekly Calendar</h3>
+
+    <button class="btn btn-outline-secondary" @onclick="GoToMonthView">
+        📅 View Full Month
+    </button>
+</div>
+
+<!-- WEEK NAVIGATION -->
+<div class="d-flex align-items-center mb-3">
+    <button class="btn btn-outline-primary me-2" @onclick="PreviousWeek">◀ Previous</button>
+    <h4 class="m-0">@weekStart.ToString("dd MMM yyyy") - @weekEnd.ToString("dd MMM yyyy")</h4>
+    <button class="btn btn-outline-primary ms-2" @onclick="NextWeek">Next ▶</button>
+</div>
+
+<!-- WEEK GRID -->
+<table class="table table-bordered calendar-table-sm">
+    <thead>
+        <tr>
+            @foreach (var dayName in dayNames)
+            {
+                <th class="text-center">@dayName</th>
+            }
+        </tr>
+    </thead>
+
+    <tbody>
+        <tr>
+            @for (int i = 0; i < 7; i++)
+            {
+                var day = weekStart.AddDays(i);
+                menuByDate.TryGetValue(day.Date, out var menu);
+                var eventsOfDay = CalendarService.GetEventsByDay(day.Date).ToList();
+
+                <td class="calendar-cell-sm @(selectedDate.Date == day.Date ? "calendar-cell-selected" : "")"
+                    @onclick="() => SelectDay(day)">
+
+                    <!-- DATE + STATUS + CONFIRMATIONS -->
+                    <div class="d-flex justify-content-between align-items-center">
+                        <strong>@day.Day</strong>
+
+                        <div class="d-flex align-items-center gap-1">
+                            @if (menu != null)
+                            {
+                                <span class="badge bg-@GetStatusColor(menu.Status)">
+                                    @menu.Status
+                                </span>
+
+                                @if (menu.ConfirmationsCount > 0)
+                                {
+                                    <span class="badge bg-info">@menu.ConfirmationsCount</span>
+                                }
+                            }
+                        </div>
+                    </div>
+
+                    <!-- DISHES -->
+                    @if (menu != null)
+                    {
+                        @foreach (var dish in menu.Dishes.OrderBy(d => d.Index))
+                        {
+                            if (!string.IsNullOrWhiteSpace(dish.Name))
+                            {
+                                <div class="small text-truncate">• @dish.Name</div>
+                            }
+                        }
+                    }
+
+                    <!-- EVENT ICONS -->
+                    @if (eventsOfDay.Any())
+                    {
+                        <div class="mt-1 small">
+                            @foreach (var ev in eventsOfDay.Take(3))
+                            {
+                                <span title="@($"{ev.Title} ({ev.Start:HH:mm})")">
+                                    @GetEventIcon(ev.Category)
+                                </span>
+                            }
+                            @if (eventsOfDay.Count > 3)
+                            {
+                                <span title="@($"{eventsOfDay.Count - 3} more events")">
+                                    +@((eventsOfDay.Count - 3))
+                                </span>
+                            }
+                        </div>
+                    }
+
+                </td>
+            }
+        </tr>
+    </tbody>
+</table>
+
+<!-- SIDE PANEL -->
+@if (selectedMenuDay != null)
+{
+    bool isClosed = isDayClosed;
+
+    <div class="card mt-4">
+        <div class="card-header">
+            @selectedMenuDay.Date.ToString("dddd dd MMMM")
+        </div>
+
+        <div class="card-body">
+
+            @if (isClosed)
+            {
+                <div class="alert alert-warning">
+                    <strong>Day is closed (cutoff 08:00 AM reached).</strong>
+                    <br />Editing and confirmations are disabled.
+                </div>
+            }
+
+            <!-- STATUS -->
+            <div class="mb-3">
+                <label class="form-label">Status</label>
+                <select class="form-select" @bind="selectedMenuDay.Status" disabled="@isClosed">
+                    <option value="@MenuDayStatus.Draft">Draft</option>
+                    <option value="@MenuDayStatus.Published">Published</option>
+                    <option value="@MenuDayStatus.Closed">Closed</option>
+                </select>
+            </div>
+
+            <!-- DISHES -->
+            @foreach (var dish in selectedMenuDay.Dishes.OrderBy(d => d.Index))
+            {
+                <div class="mb-3 border rounded p-2">
+                    <h6>Dish @dish.Index</h6>
+
+                    <div class="mb-2">
+                        <label class="form-label">Name</label>
+                        <input class="form-control" @bind="dish.Name" disabled="@isClosed" />
+                    </div>
+
+                    <div>
+                        <label class="form-label">Notes</label>
+                        <input class="form-control" @bind="dish.Notes" disabled="@isClosed" />
+                    </div>
+                </div>
+            }
+
+            <!-- CONFIRMATIONS -->
+            <h5 class="mt-4">Confirmations</h5>
+
+            <div class="mb-3">
+                <label class="form-label">Select client</label>
+                <select class="form-select" @bind="selectedClientId" disabled="@isClosed">
+                    <option value="">-- Choose client --</option>
+                    @foreach (var c in clients)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="btn-group mb-3">
+                <button class="btn btn-success" @onclick="() => ConfirmDish(1)" disabled="@(!CanConfirm || isClosed)">
+                    Confirm Dish 1
+                </button>
+                <button class="btn btn-success" @onclick="() => ConfirmDish(2)" disabled="@(!CanConfirm || isClosed)">
+                    Confirm Dish 2
+                </button>
+                <button class="btn btn-success" @onclick="() => ConfirmDish(3)" disabled="@(!CanConfirm || isClosed)">
+                    Confirm Dish 3
+                </button>
+            </div>
+
+            <p><strong>Total:</strong> @selectedMenuDay.ConfirmationsCount</p>
+
+            <ul>
+                @for (int i = 1; i <= 3; i++)
+                {
+                    var count = dishConfirmations.ContainsKey(i) ? dishConfirmations[i] : 0;
+                    <li>Dish @i: @count</li>
+                }
+            </ul>
+
+            @if (confirmationsOfDay.Any())
+            {
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            <th>Dish</th>
+                            <th>At</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in confirmationsOfDay)
+                        {
+                            var clientName = clients.FirstOrDefault(x => x.Id == c.ClientId)?.Name ?? c.ClientId;
+
+                            <tr>
+                                <td>@clientName</td>
+                                <td>@c.DishIndex</td>
+                                <td>@c.CreatedAt.ToString("HH:mm")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => CancelConfirmation(c.Id)"
+                                        disabled="@isClosed">
+                                        Cancel
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            <button class="btn btn-primary mt-3" @onclick="SaveMenu" disabled="@isClosed">
+                Save Menu
+            </button>
+
+            <button class="btn btn-outline-info mt-3 ms-2" @onclick="() => GoToDayView(selectedMenuDay.Date)">
+                View Full Day →
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    private DateTime weekStart;
+    private DateTime weekEnd;
+    private DateTime selectedDate;
+
+    private readonly Dictionary<DateTime, MenuDay> menuByDate = new();
+    private MenuDay? selectedMenuDay;
+
+    private Dictionary<int, int> dishConfirmations = new();
+    private List<Confirmation> confirmationsOfDay = new();
+    private List<Client> clients = new();
+
+    private bool isDayClosed = false;
+    private string selectedClientId = "";
+
+    private string? todayAlert;
+    private string? tomorrowAlert;
+
+    private readonly string[] dayNames = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+
+    private bool CanConfirm => selectedMenuDay != null && !string.IsNullOrEmpty(selectedClientId);
+
+    protected override void OnInitialized()
+    {
+        clients = CalendarService.GetClients().ToList();
+
+        var today = DateTime.Today;
+        weekStart = StartOfWeek(today);
+        weekEnd = weekStart.AddDays(6);
+
+        LoadWeek();
+        SelectDay(today);
+        UpdateAlerts();
+    }
+
+    private void LoadWeek()
+    {
+        menuByDate.Clear();
+
+        var menus = CalendarService.GetMenuForRange(weekStart, weekEnd);
+        foreach (var m in menus)
+            menuByDate[m.Date.Date] = m;
+
+        for (int i = 0; i < 7; i++)
+        {
+            var d = weekStart.AddDays(i).Date;
+
+            if (!menuByDate.ContainsKey(d))
+                menuByDate[d] = CalendarService.GetOrCreateMenuDay(d);
+        }
+    }
+
+    private void PreviousWeek()
+    {
+        weekStart = weekStart.AddDays(-7);
+        weekEnd = weekStart.AddDays(6);
+        LoadWeek();
+        SelectDay(weekStart);
+        UpdateAlerts();
+    }
+
+    private void NextWeek()
+    {
+        weekStart = weekStart.AddDays(7);
+        weekEnd = weekStart.AddDays(6);
+        LoadWeek();
+        SelectDay(weekStart);
+        UpdateAlerts();
+    }
+
+    private void SelectDay(DateTime day)
+    {
+        selectedDate = day.Date;
+        selectedMenuDay = CalendarService.GetOrCreateMenuDay(selectedDate);
+        isDayClosed = CalendarService.IsDayClosed(selectedDate);
+
+        RefreshConfirmations();
+    }
+
+    private void RefreshConfirmations()
+    {
+        if (selectedMenuDay == null) return;
+
+        dishConfirmations = CalendarService.GetConfirmationsByDish(selectedMenuDay.Date)
+        ?? new Dictionary<int, int>();
+
+        confirmationsOfDay = CalendarService.GetConfirmationsByDay(selectedMenuDay.Date).ToList();
+
+        var fresh = CalendarService.GetOrCreateMenuDay(selectedMenuDay.Date);
+        selectedMenuDay.ConfirmationsCount = fresh.ConfirmationsCount;
+
+        isDayClosed = CalendarService.IsDayClosed(selectedMenuDay.Date);
+    }
+
+    private void ConfirmDish(int dishIndex)
+    {
+        if (selectedMenuDay == null || isDayClosed || string.IsNullOrEmpty(selectedClientId))
+            return;
+
+        CalendarService.AddConfirmation(selectedClientId, selectedMenuDay.Date, dishIndex);
+
+        RefreshConfirmations();
+        LoadWeek();
+        UpdateAlerts();
+    }
+
+    private void CancelConfirmation(int confirmationId)
+    {
+        if (isDayClosed) return;
+
+        CalendarService.CancelConfirmation(confirmationId);
+
+        RefreshConfirmations();
+        LoadWeek();
+        UpdateAlerts();
+    }
+
+    private void SaveMenu()
+    {
+        if (selectedMenuDay == null || isDayClosed) return;
+
+        CalendarService.SaveMenuDay(selectedMenuDay);
+        LoadWeek();
+        SelectDay(selectedMenuDay.Date);
+        UpdateAlerts();
+    }
+
+    private void GoToMonthView() =>
+    Nav.NavigateTo("/calendar/month");
+
+    private void GoToDayView(DateTime date) =>
+    Nav.NavigateTo($"/calendar/day/{date:yyyy-MM-dd}");
+
+    private static DateTime StartOfWeek(DateTime date)
+    {
+        int diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
+        return date.AddDays(-diff).Date;
+    }
+
+    private string GetStatusColor(MenuDayStatus status) =>
+    status switch
+    {
+        MenuDayStatus.Draft => "secondary",
+        MenuDayStatus.Published => "success",
+        MenuDayStatus.Closed => "dark",
+        _ => "secondary"
+    };
+
+    private string GetEventIcon(CalendarEventCategory cat)
+    {
+        return cat switch
+        {
+            CalendarEventCategory.Purchase => "🛒",
+            CalendarEventCategory.Delivery => "📦",
+            CalendarEventCategory.Shift => "👨‍🍳",
+            CalendarEventCategory.Maintenance => "🛠️",
+            CalendarEventCategory.Admin => "📋",
+            CalendarEventCategory.Meeting => "🗓️",
+            _ => "🔹"
+        };
+    }
+
+    private void UpdateAlerts()
+    {
+        todayAlert = null;
+        tomorrowAlert = null;
+
+        if (clients == null || clients.Count == 0)
+        {
+            return;
+        }
+
+        var today = DateTime.Today;
+        var tomorrow = today.AddDays(1);
+        int totalClients = clients.Count;
+
+        // TODAY
+        var todayMenu = CalendarService.GetOrCreateMenuDay(today);
+        var todayClosed = CalendarService.IsDayClosed(today);
+        var todayConfirmed = todayMenu.ConfirmationsCount;
+        var todayPending = totalClients - todayConfirmed;
+
+        if (todayClosed)
+        {
+            todayAlert =
+            $"Today ({today:dd MMM}) is CLOSED (cutoff 08:00). Confirmations: {todayConfirmed}/{totalClients}.";
+        }
+        else
+        {
+            todayAlert =
+            $"Today ({today:dd MMM}) is OPEN until 08:00. Confirmations: {todayConfirmed}/{totalClients}" +
+            (todayPending > 0 ? $", pending: {todayPending} clients." : ", all clients confirmed.");
+        }
+
+        // TOMORROW
+        var tomorrowMenu = CalendarService.GetOrCreateMenuDay(tomorrow);
+        var tomorrowClosed = CalendarService.IsDayClosed(tomorrow);
+        var tomorrowConfirmed = tomorrowMenu.ConfirmationsCount;
+        var tomorrowPending = totalClients - tomorrowConfirmed;
+
+        if (!tomorrowClosed)
+        {
+            tomorrowAlert =
+            $"Tomorrow ({tomorrow:dd MMM}) cutoff 08:00. Confirmations: {tomorrowConfirmed}/{totalClients}" +
+            (tomorrowPending > 0 ? $", pending: {tomorrowPending} clients." : ", all clients confirmed.");
+        }
+    }
+}
+
+<style>
+    .calendar-table-sm {
+        width: 100%;
+        background-color: #ffffff;
+    }
+
+    .calendar-cell-sm {
+        height: 80px;
+        cursor: pointer;
+        padding: 4px;
+        vertical-align: top;
+        font-size: 14px;
+    }
+
+    .calendar-cell-sm:hover {
+        background-color: #eef6ff;
+    }
+
+    .calendar-cell-selected {
+        outline: 2px solid #0d6efd;
+        background-color: #e7f1ff;
+    }
+</style>

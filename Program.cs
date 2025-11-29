@@ -11,7 +11,7 @@ builder.Services.AddRazorComponents()
 
 // Register the MealService here
 builder.Services.AddSingleton<MealService>();
-
+builder.Services.AddSingleton<CalendarService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 
 var app = builder.Build();

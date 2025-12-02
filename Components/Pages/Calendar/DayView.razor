@@ -1,0 +1,237 @@
+@page "/calendar/day/{date:datetime}"
+
+@using CSE325_visioncoders.Models
+@using CSE325_visioncoders.Services
+@inject CalendarService CalendarService
+@inject NavigationManager Nav
+
+<h3>Day View — @date.ToString("dddd dd MMMM")</h3>
+
+@if (isDayClosed)
+{
+    <div class="alert alert-warning">
+        This day is closed (cutoff 08:00). You can review events but not modify them.
+    </div>
+}
+
+<button class="btn btn-outline-secondary mb-3" @onclick="GoBack">
+    ← Back to Week
+</button>
+
+<!-- EVENT LIST -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Operational Events</strong>
+
+        <button class="btn btn-success btn-sm" @onclick="ShowAddModal" disabled="@isDayClosed">
+            + Add Event
+        </button>
+    </div>
+
+    <div class="card-body">
+
+        @if (!events.Any())
+        {
+            <p class="text-muted">No events for this day.</p>
+        }
+        else
+        {
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th></th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var ev in events)
+                    {
+                        <tr>
+                            <td>@ev.Start.ToString("HH:mm") - @ev.End.ToString("HH:mm")</td>
+                            <td>@ev.Title</td>
+                            <td>@ev.Category</td>
+
+                            <td class="text-end">
+                                <button class="btn btn-warning btn-sm me-1" @onclick="() => EditEvent(ev)"
+                                    disabled="@isDayClosed">
+                                    Edit
+                                </button>
+
+                                <button class="btn btn-danger btn-sm" @onclick="() => DeleteEvent(ev.Id)"
+                                    disabled="@isDayClosed">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<!-- MODAL -->
+@if (showModal)
+{
+    <div class="modal-backdrop fade show"></div>
+
+    <div class="modal d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">@modalTitle</h5>
+                    <button class="btn-close" @onclick="CloseModal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-2">
+                        <label class="form-label">Title</label>
+                        <input class="form-control" @bind="editingEvent.Title" />
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" @bind="editingEvent.Description"></textarea>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">Start</label>
+                        <input type="datetime-local" class="form-control" @bind-value="editingEvent.Start"
+                            @bind-value:format="yyyy-MM-ddTHH:mm" />
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">End</label>
+                        <input type="datetime-local" class="form-control" @bind-value="editingEvent.End"
+                            @bind-value:format="yyyy-MM-ddTHH:mm" />
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">Category</label>
+                        <select class="form-select" @bind="editingEvent.Category">
+                            @foreach (var c in Enum.GetValues<CalendarEventCategory>())
+                            {
+                                <option value="@c">@c</option>
+                            }
+                        </select>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveEvent" disabled="@isDayClosed">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public DateTime date { get; set; }
+
+    private List<CalendarEvent> events = new();
+
+    private bool showModal = false;
+    private string modalTitle = "Add Event";
+
+    private CalendarEvent editingEvent = new();
+
+    private bool isDayClosed;
+
+    protected override void OnInitialized()
+    {
+        isDayClosed = CalendarService.IsDayClosed(date);
+        LoadEvents();
+    }
+
+    private void LoadEvents()
+    {
+        events = CalendarService.GetEventsByDay(date).ToList();
+    }
+
+    private void GoBack()
+    {
+        Nav.NavigateTo("/calendar");
+    }
+
+    private void ShowAddModal()
+    {
+        if (isDayClosed)
+            return;
+
+        editingEvent = new CalendarEvent
+        {
+            Start = date.Date.AddHours(9),
+            End = date.Date.AddHours(10),
+            Category = CalendarEventCategory.Other
+        };
+
+        modalTitle = "Add Event";
+        showModal = true;
+    }
+
+    private void EditEvent(CalendarEvent ev)
+    {
+        if (isDayClosed)
+            return;
+
+        editingEvent = new CalendarEvent
+        {
+            Id = ev.Id,
+            Title = ev.Title,
+            Description = ev.Description,
+            Start = ev.Start,
+            End = ev.End,
+            Category = ev.Category
+        };
+
+        modalTitle = "Edit Event";
+        showModal = true;
+    }
+
+    private void SaveEvent()
+    {
+        if (isDayClosed)
+            return;
+
+        if (editingEvent.Id == 0)
+        {
+            CalendarService.CreateEvent(editingEvent);
+        }
+        else
+        {
+            CalendarService.UpdateEvent(editingEvent);
+        }
+
+        CloseModal();
+        LoadEvents();
+    }
+
+    private void DeleteEvent(int id)
+    {
+        if (isDayClosed)
+            return;
+
+        CalendarService.DeleteEvent(id);
+        LoadEvents();
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+}
+
+<style>
+    .modal-backdrop {
+        background-color: rgba(0, 0, 0, 0.4);
+    }
+</style>

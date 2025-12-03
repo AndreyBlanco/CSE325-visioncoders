@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CSE325-visioncoders")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b61c336ee3f4085e07d4c6711993f427e19a28a1")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+87bb711aa576b10183285b01ce03b6b2bafa5003")]
 [assembly: System.Reflection.AssemblyProductAttribute("CSE325-visioncoders")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CSE325-visioncoders")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -6,13 +6,22 @@
 @inject MealService _mealService
 @inject IWebHostEnvironment Env
 @inject NavigationManager Nav
+@inject AuthService Auth
 
 <div class="titleBar">
     <img class="titleIcon" src="img/mealIcon.svg" alt="inventorymeal icon">
     <a>Edit Meals</a>
 </div>
 
-@if (meal is null)
+@if (!Auth.IsLoggedIn)
+{
+    <p>You must be logged in to edit meals. Redirecting...</p>
+}
+else if (Auth.Role != "cook")
+{
+    <p>Only cooks can edit meals. Redirecting to meals...</p>
+}
+else if (meal is null)
 {
     <p>Loading...</p>
 }
@@ -106,6 +115,19 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // Only logged-in cooks can be here
+        if (!Auth.IsLoggedIn)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        if (Auth.Role != "cook")
+        {
+            Nav.NavigateTo("/meals");
+            return;
+        }
+
         meal = await _mealService.GetByIdAsync(Id);
         if (meal is null)
         {

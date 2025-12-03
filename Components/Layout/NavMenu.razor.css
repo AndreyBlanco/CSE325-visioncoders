@@ -48,6 +48,10 @@
     background-image: url("img/inventoryIcon.svg");
 }
 
+.bi-box-arrow-left-nav-menu {
+    background-image: url("img/logoutIcon.svg");
+}
+
 .nav-item {
     font-size: 0.9rem;
     padding-bottom: 0.5rem;

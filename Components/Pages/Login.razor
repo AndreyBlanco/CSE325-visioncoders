@@ -1,0 +1,51 @@
+@page "/login"
+@using CSE325_visioncoders.Services
+@using CSE325_visioncoders.Models
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<h3>Login</h3>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+<div class="login-form">
+    <div>
+        <label>Email</label>
+        <input @bind="email" />
+    </div>
+    <div>
+        <label>Password</label>
+        <input type="password" @bind="password" />
+    </div>
+    <button @onclick="OnLoginClicked">Login</button>
+</div>
+
+@code {
+    private string email = "";
+    private string password = "";
+    private string errorMessage = "";
+
+    private async Task OnLoginClicked()
+    {
+        var ok = await Auth.LoginAsync(email, password);
+
+        if (!ok)
+        {
+            errorMessage = "Invalid email or password.";
+            return;
+        }
+
+        // Redirect based on ROLE
+        if (Auth.Role == "cook")
+        {
+            Nav.NavigateTo("/");
+        }
+        else if (Auth.Role == "customer")
+        {
+            Nav.NavigateTo("/meals");
+        }
+    }
+}

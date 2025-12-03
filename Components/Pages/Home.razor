@@ -1,4 +1,7 @@
 ﻿@page "/"
+@using CSE325_visioncoders.Services
+@inject AuthService Auth
+@inject NavigationManager Nav
 
 <PageTitle>Dashboard</PageTitle>
 
@@ -7,5 +10,36 @@
     <a>Dashboard</a>
 </div>
 
+@if (!Auth.IsLoggedIn)
+{
+    <p>You must be logged in to view this page. Redirecting to login...</p>
+}
+else if (Auth.Role == "customer")
+{
+    <p>Only cooks can view the dashboard. Redirecting you to your page...</p>
+}
+else
+{
+    <p>Welcome to your new app.</p>
+}
 
-Welcome to your new app.
+@code {
+    protected override void OnInitialized()
+    {
+        // if not logged in go to login
+        if (!Auth.IsLoggedIn)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        // Logged in as customers annd then go to meals
+        if (Auth.Role == "customer")
+        {
+            Nav.NavigateTo("/meals");
+            return;
+        }
+
+        @* if not customer logged in, and then the cooks will see the dashboard *@
+    }
+}

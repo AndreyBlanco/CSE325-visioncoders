@@ -1,0 +1,86 @@
+@page "/register"
+@using CSE325_visioncoders.Services
+@using CSE325_visioncoders.Models
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<h3>Register</h3>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert @messageClass">@message</div>
+}
+
+<div class="login-form">
+    <div>
+        <label>Name</label>
+        <input @bind="name" />
+    </div>
+    <div>
+        <label>Email</label>
+        <input @bind="email" />
+    </div>
+    <div>
+        <label>Password</label>
+        <input type="password" @bind="password" />
+    </div>
+    <div>
+        <label>Confirm Password</label>
+        <input type="password" @bind="confirmPassword" />
+    </div>
+    <div>
+        <label>Role</label>
+        <select @bind="role">
+            <option value="customer">Customer</option>
+            <option value="cook">Cook</option>
+        </select>
+    </div>
+
+    <button @onclick="OnRegisterClicked">Register</button>
+</div>
+
+@code {
+    private string name = string.Empty;
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private string confirmPassword = string.Empty;
+    private string role = "customer";
+
+    private string message = string.Empty;
+    private string messageClass = "alert-danger";
+
+    private async Task OnRegisterClicked()
+    {
+        message = string.Empty;
+
+        if (password != confirmPassword)
+        {
+            message = "Passwords do not match.";
+            messageClass = "alert-danger";
+            return;
+        }
+
+        var request = new RegisterRequest
+        {
+            Name = name,
+            Email = email,
+            Password = password,
+            Role = role
+        };
+
+        var ok = await Auth.RegisterAsync(request);
+        if (!ok)
+        {
+            message = "Registration failed. Email might already be in use.";
+            messageClass = "alert-danger";
+            return;
+        }
+
+        message = "Registration successful! You can now log in.";
+        messageClass = "alert-success";
+
+        @* redirect to login after a short delay *@
+        await Task.Delay(800);
+        Nav.NavigateTo("/login");
+    }
+}

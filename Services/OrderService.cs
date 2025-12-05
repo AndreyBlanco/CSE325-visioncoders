@@ -31,7 +31,7 @@ public class OrderService : IOrderService
 
     public async Task<List<Order>> GetAsync() =>
         await _orders.Find(_ => true)
-                     .SortByDescending(o => o.OrderDate)
+                     .SortByDescending(o => o.CreatedAt)
                      .ToListAsync();
 
     public async Task<Order?> GetByIdAsync(string id) =>
@@ -53,11 +53,11 @@ public class OrderService : IOrderService
         var startUtc = TimeZoneInfo.ConvertTimeToUtc(localStart, tz);
         var endUtc = TimeZoneInfo.ConvertTimeToUtc(localEnd, tz);
 
-        var filter = Builders<Order>.Filter.Gte(o => o.OrderDate, startUtc)
-                   & Builders<Order>.Filter.Lt(o => o.OrderDate, endUtc);
+        var filter = Builders<Order>.Filter.Gte(o => o.CreatedAt, startUtc)
+                   & Builders<Order>.Filter.Lt(o => o.CreatedAt, endUtc);
 
         return await _orders.Find(filter)
-                            .SortBy(o => o.OrderDate)
+                            .SortBy(o => o.CreatedAt)
                             .ToListAsync();
     }
 }

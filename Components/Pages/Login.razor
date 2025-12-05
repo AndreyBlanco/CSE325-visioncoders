@@ -1,4 +1,5 @@
 @page "/login"
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 @using CSE325_visioncoders.Services
 @using CSE325_visioncoders.Models
 @inject AuthService Auth
@@ -11,41 +12,43 @@
     <div class="alert alert-danger">@errorMessage</div>
 }
 
-<div class="login-form">
+<form method="post" action="@actionUrl">
     <div>
         <label>Email</label>
-        <input @bind="email" />
+        <input name="Email" />
     </div>
     <div>
         <label>Password</label>
-        <input type="password" @bind="password" />
+        <input name="Password" type="password" />
     </div>
-    <button @onclick="OnLoginClicked">Login</button>
-</div>
+    <button type="submit">Login</button>
+</form>
 
 @code {
-    private string email = "";
-    private string password = "";
-    private string errorMessage = "";
+    private string actionUrl = "";
+    private string? errorMessage;
 
-    private async Task OnLoginClicked()
+    protected override void OnInitialized()
     {
-        var ok = await Auth.LoginAsync(email, password);
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
 
-        if (!ok)
+        var error = query.Get("error");
+        if (!string.IsNullOrEmpty(error))
         {
-            errorMessage = "Invalid email or password.";
-            return;
+            errorMessage = error switch
+            {
+                "missing" => "Email and Password requiered.",
+                "invalid" => "Invalid credentials.",
+                _ => "Login Failed."
+            };
         }
 
-        // Redirect based on ROLE
-        if (Auth.Role == "cook")
-        {
-            Nav.NavigateTo("/");
-        }
-        else if (Auth.Role == "customer")
-        {
-            Nav.NavigateTo("/meals");
-        }
+        var returnUrl = query.Get("returnUrl");
+        var path = "/auth/login-form";
+        if (!string.IsNullOrEmpty(returnUrl))
+            path += $"?returnUrl={Uri.EscapeDataString(returnUrl)}";
+
+        actionUrl = Nav.ToAbsoluteUri(path).ToString();
     }
 }

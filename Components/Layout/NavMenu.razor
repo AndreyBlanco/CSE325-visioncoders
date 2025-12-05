@@ -1,6 +1,7 @@
 ﻿@using CSE325_visioncoders.Services
 @inject AuthService Auth
 @inject NavigationManager Nav
+@using Microsoft.AspNetCore.Components.Authorization
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -13,104 +14,123 @@
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="nav flex-column">
 
-        @if (!Auth.IsLoggedIn)
-        {
-            <!-- Show only Login/Register when user is NOT logged in -->
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="/login">
-                    <span class="bi bi-box-arrow-in-right"></span> Login
-                </NavLink>
-            </div>
+        <AuthorizeView>
+            <NotAuthorized>
+                <!-- Menú público: Login y Register -->
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/login">
+                        <span class="bi bi-login"></span> Login
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/register">
+                        <span class="bi bi-register"></span> Register
+                    </NavLink>
+                </div>
+            </NotAuthorized>
 
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="/register">
-                    <span class="bi bi-person-plus"></span> Register
-                </NavLink>
-            </div>
-        }
-        else if (Auth.Role == "cook")
-        {
-            <!-- FULL MENU FOR COOKS -->
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
-                    <span class="bi bi-dashboard-fill-nav-menu" aria-hidden="true"></span> Dashboard
-                </NavLink>
-            </div>
+            <Authorized>
+                <!-- Menú para Cooks/Admin -->
+                <AuthorizeView Roles="cook,admin" Context="cookState">
+                    <Authorized>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="/cook/dashboard" Match="NavLinkMatch.All">
+                                <span class="bi bi-dashboard-fill-nav-menu" aria-hidden="true"></span> Dashboard
+                            </NavLink>
+                        </div>
 
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="/orders" Match="NavLinkMatch.All">
-                    <span class="bi bi-order-fill-nav-menu" aria-hidden="true"></span> Orders
-                </NavLink>
-            </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="/cook/orders" Match="NavLinkMatch.All">
+                                <span class="bi bi-order-fill-nav-menu" aria-hidden="true"></span> Orders
+                            </NavLink>
+                        </div>
 
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="/meals" Match="NavLinkMatch.All">
-                    <span class="bi bi-meal-fill-nav-menu" aria-hidden="true"></span> Meals
-                </NavLink>
-            </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="/cook/meals" Match="NavLinkMatch.All">
+                                <span class="bi bi-meal-fill-nav-menu" aria-hidden="true"></span> Meals
+                            </NavLink>
+                        </div>
 
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="/customers">
-                    <span class="bi bi-customer-nav-menu" aria-hidden="true"></span> Customers
-                </NavLink>
-            </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="/cook/customers">
+                                <span class="bi bi-customer-nav-menu" aria-hidden="true"></span> Customers
+                            </NavLink>
+                        </div>
 
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="/calendar">
-                    <span class="bi bi-calendar-nav-menu" aria-hidden="true"></span> Calendar
-                </NavLink>
-            </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="/cook/calendar">
+                                <span class="bi bi-calendar-nav-menu" aria-hidden="true"></span> Calendar
+                            </NavLink>
+                        </div>
 
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="/inventory">
-                    <span class="bi bi-inventory-nav-menu" aria-hidden="true"></span> Inventory
-                </NavLink>
-            </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="/cook/inventory">
+                                <span class="bi bi-inventory-nav-menu" aria-hidden="true"></span> Inventory
+                            </NavLink>
+                        </div>
 
-            <div class="nav-item px-3">
-                <button class="nav-link btn btn-link text-start text-light" @onclick="Logout">
-                    <span class="bi bi-box-arrow-left-nav-menu"></span> Logout
-                </button>
-            </div>
-        }
-        else
-        {
-            <!-- LIMITED MENU FOR CUSTOMERS -->
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="/meals">
-                    <span class="bi bi-meal-fill-nav-menu"></span> Meals
-                </NavLink>
-            </div>
+                        <div class="nav-item px-3">
+                            <form method="post" action="@logoutAction">
+                                <button class="nav-link btn btn-link text-start text-light" type="submit">
+                                    <span class="bi bi-box-arrow-left-nav-menu"></span> Logout
+                                </button>
+                            </form>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
 
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="/orders">
-                    <span class="bi bi-order-fill-nav-menu"></span> My Orders
-                </NavLink>
-            </div>
+                <!-- Menú para Customers -->
+                <AuthorizeView Roles="customer" Context="custState">
+                    <Authorized>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="/customer/dashboard" Match="NavLinkMatch.All">
+                                <span class="bi bi-dashboard-fill-nav-menu" aria-hidden="true"></span> Dashboard
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="/customer/meals">
+                                <span class="bi bi-meal-fill-nav-menu"></span> Meals
+                            </NavLink>
+                        </div>
 
-            <div class="nav-item px-3">
-                <button class="nav-link btn btn-link text-start text-light" @onclick="Logout">
-                    <span class="bi bi-box-arrow-left-nav-menu"></span> Logout
-                </button>
-            </div>
-        }
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="/customer/orders">
+                                <span class="bi bi-order-fill-nav-menu"></span> My Orders
+                            </NavLink>
+                        </div>
+
+                        <div class="nav-item px-3">
+                            <form method="post" action="@logoutAction">
+                                <button class="nav-link btn btn-link text-start text-light" type="submit">
+                                    <span class="bi bi-box-arrow-left-nav-menu"></span> Logout
+                                </button>
+                            </form>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+            </Authorized>
+        </AuthorizeView>
     </nav>
 </div>
 
 @code {
+    private string logoutAction = "";
+
     protected override void OnInitialized()
     {
         Auth.OnChange += AuthStateChanged;
+        logoutAction = Nav.ToAbsoluteUri("/auth/logout?returnUrl=/login").ToString();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Auth.OnChange += AuthStateChanged;
+        await Auth.HydrateAsync(); // <- hidrata desde la cookie
     }
 
     private void AuthStateChanged()
     {
         InvokeAsync(StateHasChanged);
-    }
-
-    private void Logout()
-    {
-        Auth.Logout();
     }
 
     public void Dispose()

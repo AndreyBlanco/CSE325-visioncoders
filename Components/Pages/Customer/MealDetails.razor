@@ -1,0 +1,277 @@
+// Components/Pages/Customer/MealDetails.razor
+
+@page "/customer/meals/details/{Id}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "customer")]
+@rendermode InteractiveServer
+
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using CSE325_visioncoders.Models
+@using CSE325_visioncoders.Services
+
+@inject MealService _mealService
+@inject ReviewService _reviewService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+@layout MainLayout
+
+<CascadingAuthenticationState>
+    <div class="titleBar">
+        <img class="titleIcon" src="img/mealIcon.svg" alt="meal icon">
+        <a>Meal Details</a>
+    </div>
+
+    @if (meal is null)
+    {
+        <p>Loading meal information...</p>
+    }
+    else
+    {
+        <div class="meal-details-container">
+            <div class="meal-details-top">
+                <div class="meal-details-image">
+                    <img src="@GetImage(meal.ImageUrl)" alt="@meal.Name" />
+                </div>
+
+                <div class="meal-details-main">
+                    <h2 class="meal-details-title">@meal.Name</h2>
+                    <p class="meal-details-description">@meal.Description</p>
+
+                    <div class="meal-details-meta">
+                        <p><span class="label">Price:</span> @meal.Price.ToString("C")</p>
+                        <p><span class="label">Cook:</span> @meal.CookName</p>
+                    </div>
+
+                    <div class="meal-rating-summary">
+                        <strong>Rating:</strong>
+                        <span class="stars">@RenderStars(AverageRatingRounded)</span>
+                        <span>@AverageRating:F1 / 5</span>
+                        <span>(@TotalReviews review@(TotalReviews == 1 ? "" : "s"))</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="meal-details-section">
+                <h4>Ingredients</h4>
+                <p>@meal.Ingredients</p>
+            </div>
+
+            <div class="meal-details-section">
+                <h4>Your review</h4>
+
+                @if (!IsLogged)
+                {
+                    <p>You must be logged in to leave a review.</p>
+                }
+                else
+                {
+                    <EditForm Model="@ReviewVm" OnValidSubmit="SubmitReviewAsync">
+                        <DataAnnotationsValidator />
+
+                        <div class="row g-2 align-items-center">
+                            <div class="col-auto">
+                                <label class="col-form-label">Rating</label>
+                            </div>
+                            <div class="col-auto">
+                                <InputSelect class="form-select" @bind-Value="ReviewVm.Rating">
+                                    @for (var i = 1; i <= 5; i++)
+                                    {
+                                        <option value="@i">@i</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-auto">
+                                <span class="stars" style="font-size: 1.2rem;">@RenderStars(ReviewVm.Rating)</span>
+                            </div>
+                            <ValidationMessage For="() => ReviewVm.Rating" />
+                        </div>
+
+                        <div class="mt-2">
+                            <label class="form-label">Comment</label>
+                            <InputTextArea class="form-control" @bind-Value="ReviewVm.Comment" rows="3" maxlength="1000" />
+                            <ValidationMessage For="() => ReviewVm.Comment" />
+                        </div>
+
+                        <div class="mt-2">
+                            <button class="btn btn-primary" type="submit" disabled="@isSubmitting">
+                                @(MyReviewExists ? "Update review" : "Submit review")
+                            </button>
+                        </div>
+                    </EditForm>
+                }
+            </div>
+
+            <div class="meal-details-section">
+                <h4>Reviews (@TotalReviews)</h4>
+                @if (reviews.Count == 0)
+                {
+                    <p>No reviews yet. Be the first to review this meal!</p>
+                }
+                else
+                {
+                    @foreach (var r in reviews)
+                    {
+                        <div class="review-item">
+                            <div class="review-header">
+                                <span class="review-stars">@RenderStars(r.Rating)</span>
+                                <span class="review-user">@r.UserName</span>
+                                <span class="review-date">@r.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(r.Comment))
+                            {
+                                <div class="review-comment">@r.Comment</div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+
+            <button class="btn btn-secondary mt-3" @onclick="GoBack">Back to Meals</button>
+        </div>
+    }
+</CascadingAuthenticationState>
+
+@code {
+    // ViewModel para el formulario de review (requerido por EditForm)
+    public class ReviewFormModel
+    {
+        [Range(1, 5, ErrorMessage = "Rating must be between 1 and 5.")]
+        public int Rating { get; set; } = 5;
+
+        [MaxLength(1000)]
+        public string? Comment { get; set; } = "";
+    }
+
+    [Parameter] public string Id { get; set; } = default!;
+    private Meal? meal;
+
+    private List<MealReview> reviews = new();
+    private double AverageRating = 0;
+    private int AverageRatingRounded = 0;
+    private int TotalReviews => reviews.Count;
+
+    // Estado del usuario/logueo
+    private bool IsLogged = false;
+    private string? CurrentUserId;
+    private string CurrentUserName = "You";
+
+    // Formulario del usuario
+    private ReviewFormModel ReviewVm = new();
+    private bool MyReviewExists = false;
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAuthAsync();
+
+        meal = await _mealService.GetByIdAsync(Id);
+        if (meal is null)
+        {
+            Nav.NavigateTo("/customer/meals");
+            return;
+        }
+
+        await LoadReviewsAsync();
+    }
+
+    private async Task LoadAuthAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+        IsLogged = user?.Identity?.IsAuthenticated ?? false;
+
+        if (IsLogged)
+        {
+            CurrentUserId = GetClaim(user, ClaimTypes.NameIdentifier)
+            ?? GetClaim(user, "sub")
+            ?? GetClaim(user, "oid")
+            ?? GetClaim(user, "id");
+
+            CurrentUserName = GetClaim(user, ClaimTypes.Name)
+            ?? GetClaim(user, "name")
+            ?? GetClaim(user, "preferred_username")
+            ?? GetClaim(user, "email")
+            ?? CurrentUserName;
+        }
+    }
+
+    private static string? GetClaim(ClaimsPrincipal user, string type)
+    => user?.Claims?.FirstOrDefault(c => c.Type == type)?.Value;
+
+    private async Task LoadReviewsAsync()
+    {
+        reviews = await _reviewService.GetByMealAsync(Id);
+
+        if (reviews.Count > 0)
+        {
+            AverageRating = reviews.Average(r => r.Rating);
+            AverageRatingRounded = (int)Math.Round(AverageRating, MidpointRounding.AwayFromZero);
+        }
+        else
+        {
+            AverageRating = 0;
+            AverageRatingRounded = 0;
+        }
+
+        if (IsLogged && !string.IsNullOrWhiteSpace(CurrentUserId))
+        {
+            var mine = reviews.FirstOrDefault(r => r.UserId == CurrentUserId);
+            if (mine != null)
+            {
+                MyReviewExists = true;
+                ReviewVm.Rating = mine.Rating;
+                ReviewVm.Comment = mine.Comment;
+            }
+            else
+            {
+                MyReviewExists = false;
+                ReviewVm = new ReviewFormModel(); // reset por si venía de otra página
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task SubmitReviewAsync()
+    {
+        if (!IsLogged || string.IsNullOrWhiteSpace(CurrentUserId))
+            return;
+
+        try
+        {
+            isSubmitting = true;
+
+            var review = new MealReview
+            {
+                MealId = Id,
+                UserId = CurrentUserId!,
+                UserName = string.IsNullOrWhiteSpace(CurrentUserName) ? "You" : CurrentUserName,
+                Rating = Math.Clamp(ReviewVm.Rating, 1, 5),
+                Comment = string.IsNullOrWhiteSpace(ReviewVm.Comment) ? null : ReviewVm.Comment!.Trim(),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _reviewService.UpsertAsync(review);
+            MyReviewExists = true;
+
+            await LoadReviewsAsync();
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void GoBack() => Nav.NavigateTo("/customer/meals");
+
+    private string GetImage(string? url)
+    => string.IsNullOrWhiteSpace(url) ? "img/placeholder-meal.png" : url;
+
+    private string RenderStars(int rating)
+    {
+        var r = Math.Clamp(rating, 0, 5);
+        return new string('★', r) + new string('☆', 5 - r);
+    }
+}

@@ -1,27 +1,19 @@
-@page "/meals/edit/{Id}"
+@page "/cook/meals/edit/{Id}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "cook,admin")]
 @rendermode InteractiveServer
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
-@using Microsoft.AspNetCore.Components.Forms
 @inject MealService _mealService
 @inject IWebHostEnvironment Env
 @inject NavigationManager Nav
-@inject AuthService Auth
+@layout MainLayout
 
 <div class="titleBar">
-    <img class="titleIcon" src="img/mealIcon.svg" alt="inventorymeal icon">
-    <a>Edit Meals</a>
+    <img class="titleIcon" src="img/mealIcon.svg" alt="meal icon">
+    <a>Edit Meal</a>
 </div>
 
-@if (!Auth.IsLoggedIn)
-{
-    <p>You must be logged in to edit meals. Redirecting...</p>
-}
-else if (Auth.Role != "cook")
-{
-    <p>Only cooks can edit meals. Redirecting to meals...</p>
-}
-else if (meal is null)
+@if (meal is null)
 {
     <p>Loading...</p>
 }
@@ -33,7 +25,6 @@ else
             <ValidationSummary />
 
             <div class="meal-form-top">
-                <!-- Image box -->
                 <div class="meal-image-box">
                     <div class="meal-image-placeholder">
                         @if (string.IsNullOrWhiteSpace(meal.ImageUrl))
@@ -52,7 +43,6 @@ else
                     </div>
                 </div>
 
-                <!-- Name + Description -->
                 <div class="meal-form-right">
                     <div class="mb-3">
                         <InputText class="form-control meal-input-name"
@@ -68,7 +58,6 @@ else
                 </div>
             </div>
 
-            <!-- Ingredients -->
             <div class="meal-ingredients-box">
                 <InputTextArea class="form-control meal-input-ingredients"
                                @bind-Value="meal.Ingredients"
@@ -90,19 +79,8 @@ else
                 </div>
 
                 <button class="btn btn-primary" type="submit">Save Changes</button>
-
-                <button type="button" class="btn btn-danger ms-2" @onclick="DeleteMeal">
-                    Delete Meal
-                </button>
-
-                <button type="button" class="btn btn-secondary ms-2" @onclick="GoBack">
-                    Back to Meals
-                </button>
-            </div>
-
-            <div class="mt-3">
-                <h5>Rating / Comments</h5>
-                <p><i>(Read-only – will come from customer reviews later.)</i></p>
+                <button type="button" class="btn btn-danger ms-2" @onclick="DeleteMeal">Delete Meal</button>
+                <button type="button" class="btn btn-secondary ms-2" @onclick="GoBack">Back to Meals</button>
             </div>
         </EditForm>
     </div>
@@ -110,29 +88,14 @@ else
 
 @code {
     [Parameter] public string Id { get; set; } = default!;
-
     private Meal? meal;
 
     protected override async Task OnInitializedAsync()
     {
-        // Only logged-in cooks can be here
-        if (!Auth.IsLoggedIn)
-        {
-            Nav.NavigateTo("/login");
-            return;
-        }
-
-        if (Auth.Role != "cook")
-        {
-            Nav.NavigateTo("/meals");
-            return;
-        }
-
         meal = await _mealService.GetByIdAsync(Id);
         if (meal is null)
         {
-            // If not found, go back to list
-            Nav.NavigateTo("/meals");
+            Nav.NavigateTo("/cook/meals");
         }
     }
 
@@ -140,35 +103,36 @@ else
     {
         if (meal is null) return;
 
+        // Ajusta según tu firma real del servicio:
+        // await _meal_service.UpdateAsync(meal.Id!, meal); o await _meal_service.UpdateAsync(meal);
         await _mealService.UpdateAsync(meal);
-        Nav.NavigateTo("/meals");
+        Nav.NavigateTo("/cook/meals");
     }
 
     private async Task DeleteMeal()
     {
         if (meal?.Id is null) return;
-
         await _mealService.DeleteAsync(meal.Id);
-        Nav.NavigateTo("/meals");
+        Nav.NavigateTo("/cook/meals");
     }
 
-    private void GoBack()
-    {
-        Nav.NavigateTo("/meals");
-    }
+    private void GoBack() => Nav.NavigateTo("/cook/meals");
 
     private async Task HandleImageSelected(InputFileChangeEventArgs e)
     {
         if (meal is null) return;
 
         var file = e.File;
-        if (file is null)
-            return;
+        if (file is null) return;
+
+        var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+        var allowed = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+        if (!allowed.Contains(ext)) return;
 
         var uploadsFolder = Path.Combine(Env.WebRootPath, "img", "meals");
         Directory.CreateDirectory(uploadsFolder);
 
-        var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}";
+        var fileName = $"{Guid.NewGuid()}{ext}";
         var filePath = Path.Combine(uploadsFolder, fileName);
 
         await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);

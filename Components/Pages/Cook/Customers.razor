@@ -1,4 +1,6 @@
-@page "/customers"
+@page "/cook/customers"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "cook,admin")]
+@layout MainLayout
 
 <div class="titleBar">
     <img class="titleIcon" src="img/customerIcon.svg" alt="customers icon">    <a>Customers</a>

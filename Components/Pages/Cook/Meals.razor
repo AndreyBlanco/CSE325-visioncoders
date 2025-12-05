@@ -1,4 +1,5 @@
-@page "/meals"
+@page "/cook/meals"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "cook,admin")]
 @rendermode InteractiveServer
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
@@ -7,17 +8,14 @@
 @inject IWebHostEnvironment Env
 @inject NavigationManager Nav
 @inject AuthService Auth
+@layout MainLayout
 
 <div class="titleBar">
     <img class="titleIcon" src="img/mealIcon.svg" alt="meal icon">
     <a>Meals</a>
 </div>
 
-@if (!Auth.IsLoggedIn)
-{
-    <p>You must be logged in to view meals. Redirecting to login...</p>
-}
-else if (!HasMeals && !showForm)
+@if (!HasMeals && !showForm)
 {
     <!-- EMPTY STATE -->
     <div class="meals-empty">
@@ -27,16 +25,12 @@ else if (!HasMeals && !showForm)
             <img src="img/empty-meals.png" alt="Empty Meals Icon" width="200" />
         </div>
 
-        @* Only cooks can add meals *@
-        @if (Auth.Role == "cook")
-        {
-            <button type="button" class="btn meals-empty-btn" @onclick="ShowForm">
+        <button type="button" class="btn meals-empty-btn" @onclick="ShowForm">
                 Add Meal
-            </button>
-        }
+        </button>
     </div>
 }
-else if (Auth.IsLoggedIn && HasMeals && !showForm)
+else if (HasMeals && !showForm)
 {
     <!-- GRID WITH MEAL CARDS + ADD MORE CARD -->
     <div class="meals-grid">
@@ -49,17 +43,14 @@ else if (Auth.IsLoggedIn && HasMeals && !showForm)
         }
 
         <!-- ADD MORE CARD - only for cooks -->
-        @if (Auth.Role == "cook")
-        {
-            <div class="meal-card meal-card-add" @onclick="ShowForm">
-                <div class="meal-add-plus">+</div>
-                <button type="button" class="btn meal-add-btn">Add More</button>
-            </div>
-        }
+        <div class="meal-card meal-card-add" @onclick="ShowForm">
+            <div class="meal-add-plus">+</div>
+            <button type="button" class="btn meal-add-btn">Add More</button>
+        </div>
     </div>
 }
 
-@if (showForm && Auth.Role == "cook")
+@if (showForm)
 {
     <!-- ADD MEAL FORM (COOKS ONLY) -->
     <div class="meal-form-container">
@@ -138,22 +129,15 @@ else if (Auth.IsLoggedIn && HasMeals && !showForm)
     private List<Meal>? meals;
     private bool showForm;
 
+    protected override async Task OnInitializedAsync()
+    {
+        meals = await _mealService.GetAsync();
+    }
+
     // later: replace with logged-in cook
     private string currentCookName = "Demo Cook";
 
     private bool HasMeals => meals is not null && meals.Any();
-
-    protected override async Task OnInitializedAsync()
-    {
-        @* If not logged in, redirect to login *@
-        if (!Auth.IsLoggedIn)
-        {
-            Nav.NavigateTo("/login");
-            return;
-        }
-
-        meals = await _mealService.GetAsync();
-    }
 
     private async Task SaveMeal()
     {
@@ -170,9 +154,6 @@ else if (Auth.IsLoggedIn && HasMeals && !showForm)
 
     private void ShowForm()
     {
-        if (!Auth.IsLoggedIn || Auth.Role != "cook")
-            return;
-
         showForm = true;
     }
 
@@ -184,27 +165,12 @@ else if (Auth.IsLoggedIn && HasMeals && !showForm)
 
     private void OnMealClick(string id)
     {
-        if (!Auth.IsLoggedIn)
-        {
-            Nav.NavigateTo("/login");
-            return;
-        }
-
-        if (Auth.Role == "cook")
-        {
-            @* Cooks go to edit page of meal*@
-            OpenEditPage(id);
-        }
-        else if (Auth.Role == "customer")
-        {
-            @* Customers go to read-only details page of meal *@
-            Nav.NavigateTo($"/meals/details/{id}");
-        }
+        OpenEditPage(id);
     }
 
     private void OpenEditPage(string id)
     {
-        Nav.NavigateTo($"/meals/edit/{id}");
+        Nav.NavigateTo($"/cook/meals/edit/{id}");
     }
 
     private async Task HandleImageSelected(InputFileChangeEventArgs e)

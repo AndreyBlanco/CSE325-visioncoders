@@ -57,5 +57,78 @@ namespace CSE325_visioncoders.Services
             OnChange?.Invoke();
             _nav.NavigateTo("/login");
         }
+
+        private sealed class CookieLoginResponse
+        {
+            public bool success { get; set; }
+            public string? redirect { get; set; }
+        }
+
+        public async Task HydrateAsync()
+        {
+            try
+            {
+                var res = await _http.GetAsync("/auth/me");
+                if (!res.IsSuccessStatusCode)
+                {
+                    CurrentUser = null;
+                    OnChange?.Invoke();
+                    return;
+                }
+
+                var me = await res.Content.ReadFromJsonAsync<MeDto>();
+                CurrentUser = new LoginResponse
+                {
+                    Success = true,
+                    UserId = me?.userId,
+                    Name = me?.name,
+                    Role = me?.role
+                };
+                OnChange?.Invoke();
+            }
+            catch
+            {
+                CurrentUser = null;
+                OnChange?.Invoke();
+            }
+        }
+
+        private sealed class MeDto
+        {
+            public string? userId { get; set; }
+            public string? name { get; set; }
+            public string? role { get; set; }
+        }
+
+        public async Task<(bool ok, string? redirect)> LoginWithCookieAsync(string email, string password, string? returnUrl = null)
+        {
+            var endpoint = "/auth/login";
+            if (!string.IsNullOrEmpty(returnUrl))
+                endpoint += $"?returnUrl={Uri.EscapeDataString(returnUrl)}";
+
+            var res = await _http.PostAsJsonAsync(endpoint, new { email, password });
+            if (!res.IsSuccessStatusCode)
+            {
+                CurrentUser = null;
+                OnChange?.Invoke();
+                return (false, null);
+            }
+
+            var payload = await res.Content.ReadFromJsonAsync<CookieLoginResponse>();
+
+            await HydrateAsync();
+
+            return (payload?.success == true, payload?.redirect);
+        }
+
+        public async Task LogoutAsync()
+        {
+            try { await _http.PostAsync("/auth/logout", null); }
+            catch { /* ignore */ }
+
+            CurrentUser = null;
+            OnChange?.Invoke();
+            _nav.NavigateTo("/login", true);
+        }
     }
 }

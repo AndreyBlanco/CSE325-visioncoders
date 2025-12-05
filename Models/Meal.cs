@@ -10,6 +10,9 @@ namespace CSE325_visioncoders.Models
         [BsonRepresentation(BsonType.ObjectId)]
         public string? Id { get; set; }
 
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string CookId { get; set; } = default!;
+
         [Required]
         [BsonElement("name")]
         public string Name { get; set; } = string.Empty;
@@ -34,6 +37,9 @@ namespace CSE325_visioncoders.Models
 
         [BsonElement("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        
+        [BsonElement("updated_at")]
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         [BsonElement("is_active")]
         public bool IsActive { get; set; } = true;

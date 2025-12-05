@@ -1,0 +1,128 @@
+@page "/customer/meals"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "customer")]
+@rendermode InteractiveServer
+@using CSE325_visioncoders.Models
+@using CSE325_visioncoders.Services
+@inject MealService _mealService
+@inject NavigationManager Nav
+@layout MainLayout
+
+<div class="titleBar">
+    <img class="titleIcon" src="img/mealIcon.svg" alt="meal icon">
+    <a>Meals</a>
+</div>
+
+<!-- Filtros -->
+<div class="filters-bar">
+    <div class="filters-row">
+        <!-- Cook -->
+        <div class="filter-item">
+            <label for="cookFilter" class="form-label">Cook</label>
+            <InputSelect @bind-Value="selectedCookId" id="cookFilter" class="form-select">
+                <option value="">All cooks</option>
+                @foreach (var c in cooks)
+                {
+                    <option value="@c.Id">@c.Name</option>
+                }
+            </InputSelect>
+        </div>
+
+        <!-- Búsqueda -->
+        <div class="filter-item" style="min-width: 260px;">
+            <label for="searchBox" class="form-label">Search</label>
+            <InputText id="searchBox" class="form-control" @bind-Value="searchText" placeholder="Name, description, ingredients" />
+        </div>
+
+        <!-- Botones -->
+        <div class="filter-actions">
+            <button class="btn btn-primary" @onclick="ApplyFilters">Apply</button>
+            <button class="btn btn-secondary ms-2" @onclick="ClearFilters">Clear</button>
+        </div>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="loading">Loading meals…</div>
+}
+else if (meals is null || meals.Count == 0)
+{
+    <div class="meals-empty">
+        <h3>No meals found</h3>
+        <p>Try selecting another cook or clearing the search.</p>
+        <div class="meals-empty-icon">
+            <img src="img/empty-meals.png" alt="Empty Meals Icon" width="200" />
+        </div>
+    </div>
+}
+else
+{
+    <div class="meals-grid">
+        @foreach (var meal in meals)
+        {
+            <div class="meal-card" @onclick="@(() => OnMealClick(meal.Id!))" style="cursor:pointer;">
+                <img src="@GetImage(meal.ImageUrl)" alt="@meal.Name" />
+                <div class="meal-card-name">@meal.Name</div>
+                <div class="meal-card-meta">
+                    <span class="meal-card-cook">@(!string.IsNullOrWhiteSpace(meal.CookName) ? meal.CookName : "Cook")</span>
+                    <span class="meal-card-price">$@meal.Price</span>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<Meal> meals = new();
+    private List<CookOption> cooks = new();
+    private string selectedCookId = "";
+    private string searchText = "";
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCooksAsync();
+        await LoadMealsAsync();
+        isLoading = false;
+    }
+
+    private async Task LoadCooksAsync()
+    {
+        cooks = await _mealService.GetActiveCooksAsync();
+    }
+
+    private async Task LoadMealsAsync()
+    {
+        isLoading = true;
+        meals = await _mealService.GetActiveAsync(
+            string.IsNullOrWhiteSpace(selectedCookId) ? null : selectedCookId,
+            string.IsNullOrWhiteSpace(searchText) ? null : searchText
+        );
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task ApplyFilters()
+    {
+        await LoadMealsAsync();
+    }
+
+    private async Task ClearFilters()
+    {
+        selectedCookId = "";
+        searchText = "";
+        await LoadMealsAsync();
+    }
+
+    private void OnMealClick(string id)
+    {
+        // Ajusta la ruta según tu flujo (detalle o crear orden)
+        // Ejemplos:
+        // Nav.NavigateTo($"/customer/meals/details/{id}");
+        // Nav.NavigateTo($"/customer/orders/new?mealId={id}");
+        Nav.NavigateTo($"/customer/meals/details/{id}");
+    }
+
+    private string GetImage(string? url)
+        => string.IsNullOrWhiteSpace(url) ? "img/placeholder-meal.png" : url;
+}

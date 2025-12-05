@@ -1,0 +1,20 @@
+@page "/customer/orders"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "customer")]
+@using System
+@using System.Collections.Generic
+@using System.Linq
+@using CSE325_visioncoders.Models
+@using CSE325_visioncoders.Services
+@inject IOrderService OrderService
+@inject IOrderSettingsService SettingsService
+@layout MainLayout
+
+<div class="titleBar">
+    <img class="titleIcon" src="img/orderIcon.svg" alt="order icon">
+    <a>My Orders</a>
+</div>
+
+@code {
+   
+}
+

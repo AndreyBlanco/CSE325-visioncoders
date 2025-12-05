@@ -1,0 +1,13 @@
+﻿@page "/cook/dashboard"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "cook,admin")]
+@layout MainLayout
+@using CSE325_visioncoders.Services
+
+<PageTitle>Dashboard</PageTitle>
+
+<div class="titleBar">
+    <img class="titleIcon" src="img/dashboardIcon.svg" alt="order">
+    <a>Dashboard</a>
+</div>
+
+<p>Welcome to your new app.</p>

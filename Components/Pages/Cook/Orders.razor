@@ -1,4 +1,5 @@
-@page "/orders"
+@page "/cook/orders"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "cook,admin")]
 @using System
 @using System.Collections.Generic
 @using System.Linq
@@ -6,6 +7,7 @@
 @using CSE325_visioncoders.Services
 @inject IOrderService OrderService
 @inject IOrderSettingsService SettingsService
+@layout MainLayout
 
 <div class="titleBar">
     <img class="titleIcon" src="img/orderIcon.svg" alt="order icon">
@@ -36,20 +38,19 @@ else
         <thead>
             <tr>
                 <th>Date</th>
-                <th>Email</th>
-                <th>Quantity</th>
-                <th>Specials</th>
+                <th>Customer</th>
+                <th>Meal</th>
+                <th>Cook</th>
             </tr>
         </thead>
         <tbody>
         @foreach (var o in orders)
         {
             <tr>
-                <td>@o.OrderDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
-                <td>@o.Email</td>
-                <td>@o.Quantity</td>
-                <td>@string.Join(", ",
-                (o.Specials ?? new()).SelectMany(d => d.Select(kv => $"{kv.Key}={kv.Value}")))</td>
+                <td>@o.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                <td>@o.CustomerId</td>
+                <td>@o.MealId</td>
+                <td>@o.CookId</td>
             </tr>
         }
         </tbody>
@@ -93,7 +94,6 @@ else
             }
             else
             {
-                // 12:00 o después -> [hoy 08:00, mañana 08:00)
                 localStart = today.ToDateTime(dayStart);
                 localEnd = tomorrow.ToDateTime(dayStart);
                 windowLabel = $"{today:yyyy-MM-dd} {dayStart} → {tomorrow:yyyy-MM-dd} {dayStart}";

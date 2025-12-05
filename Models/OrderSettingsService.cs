@@ -11,7 +11,6 @@ public interface IOrderSettingsService
 
 public class OrderSettingsService : IOrderSettingsService
 {
-    // Por ahora in-memory. Luego puedes persistir en Mongo (collection “settings”)
     private OrderViewSettings _settings = new();
 
     public Task<OrderViewSettings> GetAsync() => Task.FromResult(_settings);

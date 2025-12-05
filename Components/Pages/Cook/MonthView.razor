@@ -1,4 +1,5 @@
-@page "/calendar/month"
+@page "/cook/calendar/month"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "cook,admin")]
 
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services

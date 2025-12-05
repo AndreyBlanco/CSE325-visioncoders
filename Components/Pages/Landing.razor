@@ -1,0 +1,41 @@
+@page "/"
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@layout CSE325_visioncoders.Components.Layout.PublicLayout
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Nav
+
+<h1>Welcome to LunchMate</h1>
+<p>Your meals organizer</p>
+
+<div style="margin-top:1rem;">
+  <a href="/login">Login</a>
+  <a href="/register" style="margin-left:1rem;">Register</a>
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+
+    private const string CustomerHome = "/customer/dashboard"; 
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var state = await AuthStateTask;
+        var user = state.User;
+
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            if (user.IsInRole("cook") || user.IsInRole("admin"))
+            {
+                Nav.NavigateTo("/cook/dashboard", forceLoad: true);
+                return;
+            }
+            if (user.IsInRole("customer"))
+            {
+                Nav.NavigateTo(CustomerHome, forceLoad: true);
+                return;
+            }
+        }
+    }
+}

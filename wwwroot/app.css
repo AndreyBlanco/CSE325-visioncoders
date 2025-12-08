@@ -399,6 +399,39 @@ h1:focus {
     margin-bottom: 0.4rem;
 }
 
+/* Hover card para opciones de menú en MyOrders */
+.meal-option {
+    position: relative;
+}
+
+.meal-hover-card {
+    display: none;
+    position: absolute;
+    z-index: 1000;
+    top: 100%;
+    /* debajo del radio */
+    left: 0;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+    width: 360px;
+}
+
+.meal-option:hover .meal-hover-card {
+    display: block;
+}
+
+.meal-hover-card .label {
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+.meal-hover-card .stars {
+    color: #f5a623;
+    margin: 0 4px;
+}
+
 @media (max-width: 768px) {
     .meal-details-container {
         padding: 1rem 1.2rem;

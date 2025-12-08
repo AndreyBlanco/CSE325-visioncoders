@@ -35,7 +35,7 @@ builder.Services.AddSingleton<MealService>();
 builder.Services.AddSingleton<CalendarService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddSingleton<IOrderSettingsService, OrderSettingsService>();
-builder.Services.AddSingleton<CSE325_visioncoders.Services.ReviewService>();
+builder.Services.AddSingleton<ReviewService>();
 // MongoDB settings + UserService for auth
 builder.Services.Configure<MongoDbSettings>(
     builder.Configuration.GetSection("MongoDbSettings"));
@@ -44,7 +44,10 @@ builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<InventoryService>();
 
 builder.Services.AddScoped<AuthService>();
-builder.Services.AddHttpClient();  
+builder.Services.AddHttpClient();
+
+builder.Services.AddSingleton<CustomerOrdersService>();
+builder.Services.AddSingleton<MenuDayService>();
 
 var app = builder.Build();
 

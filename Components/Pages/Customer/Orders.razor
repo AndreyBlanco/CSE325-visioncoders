@@ -1,20 +1,404 @@
 @page "/customer/orders"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "customer")]
-@using System
-@using System.Collections.Generic
-@using System.Linq
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
-@inject IOrderService OrderService
-@inject IOrderSettingsService SettingsService
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject MealService MealSvc
+@inject CustomerOrdersService OrdersSvc
+@inject NavigationManager Nav
 @layout MainLayout
 
 <div class="titleBar">
-    <img class="titleIcon" src="img/orderIcon.svg" alt="order icon">
+    <img class="titleIcon" src="img/orderIcon.svg" alt="Order icon">
     <a>My Orders</a>
 </div>
 
-@code {
-   
+@if (!IsReady)
+{
+    <p>Loading…</p>
+}
+else
+{
+    <!-- Filtros -->
+    <div class="filters-bar">
+        <div class="filters-row">
+            <div class="filter-item">
+                <label class="form-label">Cook</label>
+                <InputSelect class="form-select" @bind-Value="SelectedCookId" @onchange="OnCookChanged">
+                    <option value="">-- Select a cook --</option>
+                    @foreach (var c in Cooks)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="filter-item ms-3">
+                <label class="form-label">Week</label>
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-outline-secondary me-2" @onclick="PrevWeek">← Prev</button>
+                    <div>@WeekLabel</div>
+                    <button class="btn btn-outline-secondary ms-2" @onclick="NextWeek">Next →</button>
+                </div>
+            </div>
+
+            <div class="filter-actions ms-3">
+                <button class="btn btn-primary" @onclick="ReloadWeek" disabled="@string.IsNullOrWhiteSpace(SelectedCookId)">Load</button>
+            </div>
+        </div>
+    </div>
+
+    @if (string.IsNullOrWhiteSpace(SelectedCookId))
+    {
+        <div class="alert alert-info mt-3">
+            Select a cook to view the weekly menu and place orders.
+        </div>
+    }
+    else if (Days.Count == 0)
+    {
+        <div class="alert alert-warning mt-3">
+            No menu published for this week.
+        </div>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(FlashMessage))
+        {
+            <div class="alert @FlashCss mt-2">@FlashMessage</div>
+        }
+
+        <div class="myorders-week">
+            @foreach (var d in Days)
+            {
+                var dayKey = d.Day.Date; // Kind Unspecified (local date)
+                var sel = Selections.TryGetValue(dayKey, out var val) ? val : null;
+
+                <div class="myorders-day card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>@dayKey.ToString("dddd, MMM dd")</strong>
+                            <span class="badge bg-light text-dark ms-2">@d.Day.Status</span>
+                        </div>
+                        <div>
+                            @if (d.MyOrder is not null)
+                            {
+                                <span class="me-2">Current: <em>@GetDishName(d.Day, d.MyOrder.MealId)</em></span>
+                                @if (d.CanCancel)
+                                {
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => CancelDayAsync(d.Day)">Cancel</button>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Locked after cutoff</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted">No order</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        @if (d.Day.Dishes is null || d.Day.Dishes.Count == 0)
+                        {
+                            <div class="text-muted">No options for this day.</div>
+                        }
+                        else
+                        {
+                            @* Reemplaza el bloque que iteraba d.Day.Dishes o d.DishesHydrated previamente *@
+                            <div class="row">
+                                @foreach (var dish in d.DishesHydrated)
+                                {
+                                    var isSelected = sel == dish.MealId;
+                                    <div class="col-md-4 mb-2">
+                                        <div class="meal-option position-relative">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio"
+                                                    name="@($"select-{dayKey:yyyyMMdd}")"
+                                                    id="@($"m-{dayKey:yyyyMMdd}-{dish.Index}")"
+                                                    value="@dish.MealId"
+                                                    checked="@isSelected"
+                                                    @onchange="(e) => OnSelectMeal(dayKey, dish.MealId)" />
+                                                <label class="form-check-label" for="@($"m-{dayKey:yyyyMMdd}-{dish.Index}")">
+                                                    <strong>@dish.Name</strong>
+                                                    <span class="ms-1 text-muted">(@dish.Price.ToString("C"))</span>
+                                                </label>
+                                            </div>
+
+                                            <!-- Hover card -->
+                                            <div class="meal-hover-card shadow">
+                                                <div class="meal-details-top d-flex">
+                                                    <div class="meal-details-image me-2">
+                                                        <img src="@GetImage(dish.ImageUrl)" alt="@dish.Name" style="width: 96px; height: 96px; object-fit: cover; border-radius: 8px;" />
+                                                    </div>
+
+                                                    <div class="meal-details-main">
+                                                        <h6 class="meal-details-title mb-1" style="margin:0;">@dish.Name</h6>
+                                                        @if (!string.IsNullOrWhiteSpace(dish.Description))
+                                                        {
+                                                            <div class="meal-details-description small text-muted">@dish.Description</div>
+                                                        }
+
+                                                        <div class="meal-details-meta small mt-1">
+                                                            <div><span class="label">Price:</span> @dish.Price.ToString("C")</div>
+                                                            @if (!string.IsNullOrWhiteSpace(dish.CookName))
+                                                            {
+                                                                <div><span class="label">Cook:</span> @dish.CookName</div>
+                                                            }
+                                                        </div>
+
+                                                        <div class="meal-rating-summary mt-1 small">
+                                                            <strong>Rating:</strong>
+                                                            <span class="stars">@RenderStars(RoundToStars(dish.AverageRating))</span>
+                                                            <span>@dish.AverageRating.ToString("0.0") / 5</span>
+                                                            <span>(@dish.TotalReviews review@(dish.TotalReviews == 1 ? "" : "s"))</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- /Hover card -->
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-success me-2"
+                                        @onclick="() => SaveDayAsync(d.Day)"
+                                        disabled="@(!CanSaveDay(d.Day))">
+                                    @(HasOrder(d.Day) ? "Update Order" : "Place Order")
+                                </button>
+                                <span class="text-muted small">
+                                    Cutoff: 8:00 AM local of the delivery day (@(d.Day.TimeZone ?? "local"))
+                                </span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
 }
 
+@code {
+    // Auth
+    private bool IsReady = false;
+    private bool IsLogged = false;
+    private string? CustomerId;
+
+    // Filtros
+    private List<CookOption> Cooks = new();
+    private string SelectedCookId = "";
+    private DateTime WeekStartLocal; // Kind Unspecified (lunes local)
+
+    // Datos de semana
+    private List<CustomerOrdersService.MenuDayWithSelection> Days = new();
+    private Dictionary<DateTime, string?> Selections = new(); // por día -> MealId escogido
+
+    // Mensajes
+    private string? FlashMessage;
+    private string FlashCss = "alert-success";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAuthAsync();
+        if (!IsLogged)
+        {
+            Nav.NavigateTo("/");
+            return;
+        }
+
+        // Lunes de la semana actual (local)
+        var today = DateTime.Now.Date;
+        var delta = ((int)DayOfWeek.Monday - (int)today.DayOfWeek + 7) % 7;
+        WeekStartLocal = NormalizeLocalDate(today.AddDays(-(((int)today.DayOfWeek + 6) % 7)));
+
+        // Cooks para dropdown
+        Cooks = await MealSvc.GetActiveCooksAsync();
+
+        IsReady = true;
+    }
+
+    private async Task OnCookChanged(ChangeEventArgs _)
+    {
+        await ReloadWeek();
+    }
+
+    private async Task ReloadWeek()
+    {
+        FlashMessage = null;
+
+        if (string.IsNullOrWhiteSpace(SelectedCookId) || string.IsNullOrWhiteSpace(CustomerId))
+        {
+            Days.Clear();
+            Selections.Clear();
+            StateHasChanged();
+            return;
+        }
+
+        Days = await OrdersSvc.GetWeekWithSelectionsAsync(CustomerId!, SelectedCookId, WeekStartLocal);
+        Selections = Days.ToDictionary(d => d.Day.Date, d => d.MyOrder?.MealId);
+        StateHasChanged();
+    }
+
+    private void PrevWeek()
+    {
+        WeekStartLocal = NormalizeLocalDate(WeekStartLocal.AddDays(-7));
+        _ = ReloadWeek();
+    }
+
+    private void NextWeek()
+    {
+        WeekStartLocal = NormalizeLocalDate(WeekStartLocal.AddDays(7));
+        _ = ReloadWeek();
+    }
+
+    private void OnSelectMeal(DateTime dayLocal, string mealId)
+    {
+        Selections[dayLocal] = mealId;
+    }
+
+    private bool HasOrder(MenuDay day)
+        => Days.FirstOrDefault(x => x.Day.Date == day.Date)?.MyOrder != null;
+
+    private bool CanSaveDay(MenuDay day)
+    {
+        var sel = Selections.TryGetValue(day.Date, out var val) ? val : null;
+        if (string.IsNullOrWhiteSpace(sel)) return false;
+
+        var dayRow = Days.FirstOrDefault(x => x.Day.Date == day.Date);
+        if (dayRow?.MyOrder is null) return true; // crear
+
+        // actualizar: permitir solo si aún se puede cancelar (misma ventana)
+        return CustomerOrdersService.CanCancel(dayRow.MyOrder);    // ...continuación de MyOrders.razor (@code)
+
+    }
+
+    private async Task SaveDayAsync(MenuDay day)
+    {
+        if (string.IsNullOrWhiteSpace(CustomerId) || string.IsNullOrWhiteSpace(SelectedCookId))
+            return;
+
+        var hasSel = Selections.TryGetValue(day.Date, out var mealId) && !string.IsNullOrWhiteSpace(mealId);
+        if (!hasSel)
+        {
+            FlashCss = "alert-warning";
+            FlashMessage = "Please select a meal option first.";
+            StateHasChanged();
+            return;
+        }
+
+        try
+        {
+            var tzId = GetTzId(day);
+            var (ok, message, _) = await OrdersSvc.CreateOrUpdateOrderAsync(
+                customerId: CustomerId!,
+                cookId: SelectedCookId,
+                mealId: mealId!,
+                deliveryDateLocal: day.Date,
+                tzId: tzId
+            );
+
+            FlashCss = ok ? "alert-success" : "alert-warning";
+            FlashMessage = message;
+            await ReloadWeek();
+        }
+        catch (Exception ex)
+        {
+            FlashCss = "alert-danger";
+            FlashMessage = $"Error saving order: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private async Task CancelDayAsync(MenuDay day)
+    {
+        if (string.IsNullOrWhiteSpace(CustomerId) || string.IsNullOrWhiteSpace(SelectedCookId))
+            return;
+
+        try
+        {
+            var (ok, message) = await OrdersSvc.CancelOrderAsync(
+                customerId: CustomerId!,
+                cookId: SelectedCookId,
+                deliveryDateLocal: day.Date
+            );
+
+            FlashCss = ok ? "alert-success" : "alert-warning";
+            FlashMessage = message;
+            await ReloadWeek();
+        }
+        catch (Exception ex)
+        {
+            FlashCss = "alert-danger";
+            FlashMessage = $"Error cancelling order: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAuthAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+        IsLogged = user?.Identity?.IsAuthenticated ?? false;
+
+        if (IsLogged)
+        {
+            CustomerId = GetClaim(user, ClaimTypes.NameIdentifier)
+                      ?? GetClaim(user, "sub")
+                      ?? GetClaim(user, "oid")
+                      ?? GetClaim(user, "id");
+        }
+    }
+
+    private static string? GetClaim(ClaimsPrincipal user, string type)
+        => user?.Claims?.FirstOrDefault(c => c.Type == type)?.Value;
+
+    private static DateTime NormalizeLocalDate(DateTime d)
+        => new DateTime(d.Year, d.Month, d.Day, 0, 0, 0, DateTimeKind.Unspecified);
+
+    private string FormatTooltip(CustomerOrdersService.DishInfo d)
+    {
+        var price = d.Price.ToString("C");
+        var desc = string.IsNullOrWhiteSpace(d.Description) ? "" : $"\n{d.Description}";
+        var ingr = string.IsNullOrWhiteSpace(d.Ingredients) ? "" : $"\nIngredients: {d.Ingredients}";
+        return $"{d.Name} — {price}{desc}{ingr}";
+    }
+
+
+    private string GetDishName(MenuDay day, string mealId)
+    {
+        var row = Days.FirstOrDefault(x => x.Day.Date == day.Date);
+        var hydrated = row?.DishesHydrated?.FirstOrDefault(di => di.MealId == mealId)?.Name;
+        if (!string.IsNullOrWhiteSpace(hydrated))
+            return hydrated;
+
+        return day.Dishes.FirstOrDefault(x => x.MealId == mealId)?.Name ?? "(unknown)";
+    }
+
+    private string GetTzId(MenuDay day)
+        => string.IsNullOrWhiteSpace(day.TimeZone) ? "America/Bogota" : day.TimeZone;
+
+    private string WeekLabel
+        => $"{WeekStartLocal:MMM dd} - {WeekStartLocal.AddDays(4):MMM dd}";
+
+    // Redondea el promedio a estrellas 0..5
+    private int RoundToStars(double avg)
+        => (int)Math.Round(Math.Clamp(avg, 0.0, 5.0), MidpointRounding.AwayFromZero);
+
+    // Renderiza estrellas ★☆
+    private string RenderStars(int rating)
+    {
+        var r = Math.Clamp(rating, 0, 5);
+        return new string('★', r) + new string('☆', 5 - r);
+    }
+
+    // Imagen con fallback
+    private string GetImage(string? url)
+        => string.IsNullOrWhiteSpace(url) ? "img/placeholder-meal.png" : url;
+}

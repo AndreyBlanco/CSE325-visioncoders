@@ -28,6 +28,8 @@ public class OrderService : IOrderService
     {
         var connectionString = configuration.GetConnectionString("MongoDb");
         var client = new MongoClient(connectionString);
+        var database = client.GetDatabase("lunchmate");  
+        _orders = database.GetCollection<Order>("orders"); 
         var database = client.GetDatabase("lunchmate"); 
         _orders = database.GetCollection<Order>("orders");
     }
@@ -49,6 +51,7 @@ public class OrderService : IOrderService
     public async Task DeleteAsync(string id) =>
         await _orders.DeleteOneAsync(o => o.Id == id);
 
+    
     public async Task<List<Order>> GetByLocalWindowAsync(DateTime localStart, DateTime localEnd, string timeZoneId)
     {
         var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);

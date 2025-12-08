@@ -20,5 +20,11 @@ namespace CSE325_visioncoders.Models
 
         [BsonElement("role")]
         public string Role { get; set; } = "customer";
+
+        [BsonElement("phone")]
+        public string? Phone { get; set; }
+
+        [BsonElement("address")]
+        public string? Address { get; set; }
     }
 }

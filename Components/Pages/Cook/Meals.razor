@@ -1,9 +1,13 @@
 @page "/cook/meals"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "cook,admin")]
 @rendermode InteractiveServer
+
+@using System.IO
+@using System.Linq
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
 @using Microsoft.AspNetCore.Components.Forms
+
 @inject MealService _mealService
 @inject IWebHostEnvironment Env
 @inject NavigationManager Nav
@@ -15,9 +19,14 @@
     <a>Meals</a>
 </div>
 
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
 @if (!HasMeals && !showForm)
 {
-    <!-- EMPTY STATE -->
+    @* EMPTY STATE *@
     <div class="meals-empty">
         <h2>There are no meals added yet</h2>
 
@@ -26,13 +35,13 @@
         </div>
 
         <button type="button" class="btn meals-empty-btn" @onclick="ShowForm">
-                Add Meal
+            Add Meal
         </button>
     </div>
 }
 else if (HasMeals && !showForm)
 {
-    <!-- GRID WITH MEAL CARDS + ADD MORE CARD -->
+    @* GRID WITH MEAL CARDS + ADD MORE CARD *@
     <div class="meals-grid">
         @foreach (var meal in meals!)
         {
@@ -42,7 +51,7 @@ else if (HasMeals && !showForm)
             </div>
         }
 
-        <!-- ADD MORE CARD - only for cooks -->
+        @* ADD MORE CARD - only for cooks *@
         <div class="meal-card meal-card-add" @onclick="ShowForm">
             <div class="meal-add-plus">+</div>
             <button type="button" class="btn meal-add-btn">Add More</button>
@@ -52,14 +61,14 @@ else if (HasMeals && !showForm)
 
 @if (showForm)
 {
-    <!-- ADD MEAL FORM (COOKS ONLY) -->
+    @* ADD MEAL FORM (COOKS ONLY) *@
     <div class="meal-form-container">
         <EditForm Model="@newMeal" OnValidSubmit="SaveMeal">
             <DataAnnotationsValidator />
             <ValidationSummary />
 
             <div class="meal-form-top">
-                <!-- Image box with file picker -->
+                @* Image box with file picker *@
                 <div class="meal-image-box">
                     <div class="meal-image-placeholder">
                         @if (string.IsNullOrWhiteSpace(newMeal.ImageUrl))
@@ -78,7 +87,7 @@ else if (HasMeals && !showForm)
                     </div>
                 </div>
 
-                <!-- Name + Description -->
+                @* Name + Description *@
                 <div class="meal-form-right">
                     <div class="mb-3">
                         <InputText class="form-control meal-input-name"
@@ -94,7 +103,7 @@ else if (HasMeals && !showForm)
                 </div>
             </div>
 
-            <!-- Ingredients full-width -->
+            @* Ingredients full-width *@
             <div class="meal-ingredients-box">
                 <InputTextArea class="form-control meal-input-ingredients"
                                @bind-Value="newMeal.Ingredients"
@@ -129,6 +138,10 @@ else if (HasMeals && !showForm)
     private List<Meal>? meals;
     private bool showForm;
 
+    // Max size for uploaded images (25 MB)
+    private const long MaxImageSize = 25L * 1024 * 1024;
+    private string? errorMessage;
+
     protected override async Task OnInitializedAsync()
     {
         meals = await _mealService.GetAsync();
@@ -141,6 +154,8 @@ else if (HasMeals && !showForm)
 
     private async Task SaveMeal()
     {
+        errorMessage = null;
+
         if (string.IsNullOrWhiteSpace(newMeal.CookName))
         {
             newMeal.CookName = currentCookName;
@@ -154,6 +169,7 @@ else if (HasMeals && !showForm)
 
     private void ShowForm()
     {
+        errorMessage = null;
         showForm = true;
     }
 
@@ -161,6 +177,7 @@ else if (HasMeals && !showForm)
     {
         showForm = false;
         newMeal = new Meal();
+        errorMessage = null;
     }
 
     private void OnMealClick(string id)
@@ -175,9 +192,29 @@ else if (HasMeals && !showForm)
 
     private async Task HandleImageSelected(InputFileChangeEventArgs e)
     {
+        errorMessage = null;
+
         var file = e.File;
         if (file is null)
             return;
+
+        var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+        var allowed = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+
+        if (!allowed.Contains(ext))
+        {
+            errorMessage = "Invalid image type. Please upload a JPG, PNG, GIF, or WEBP file.";
+            return;
+        }
+
+        // Check size before opening stream
+        if (file.Size > MaxImageSize)
+        {
+            var sizeMb = file.Size / 1024 / 1024;
+            var maxMb = MaxImageSize / 1024 / 1024;
+            errorMessage = $"Image is too large ({sizeMb} MB). Max allowed is {maxMb} MB. Please upload a smaller image.";
+            return;
+        }
 
         var uploadsFolder = Path.Combine(Env.WebRootPath, "img", "meals");
         Directory.CreateDirectory(uploadsFolder);
@@ -185,7 +222,7 @@ else if (HasMeals && !showForm)
         var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}";
         var filePath = Path.Combine(uploadsFolder, fileName);
 
-        await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+        await using var stream = file.OpenReadStream(MaxImageSize);
         await using var fs = File.Create(filePath);
         await stream.CopyToAsync(fs);
 

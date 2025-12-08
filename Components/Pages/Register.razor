@@ -22,6 +22,14 @@
         <input @bind="email" />
     </div>
     <div>
+        <label>Phone</label>
+        <input @bind="phone" />
+    </div>
+    <div>
+        <label>Address</label>
+        <input @bind="address" />
+    </div>
+    <div>
         <label>Password</label>
         <input type="password" @bind="password" />
     </div>
@@ -43,6 +51,8 @@
 @code {
     private string name = string.Empty;
     private string email = string.Empty;
+    private string phone = string.Empty;
+    private string address = string.Empty;
     private string password = string.Empty;
     private string confirmPassword = string.Empty;
     private string role = "customer";
@@ -66,7 +76,9 @@
             Name = name,
             Email = email,
             Password = password,
-            Role = role
+            Role = role,
+            Phone = phone,
+            Address = address
         };
 
         var ok = await Auth.RegisterAsync(request);
@@ -80,7 +92,6 @@
         message = "Registration successful! You can now log in.";
         messageClass = "alert-success";
 
-        @* redirect to login after a short delay *@
         await Task.Delay(800);
         Nav.NavigateTo("/login");
     }

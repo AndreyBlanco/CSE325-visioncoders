@@ -160,7 +160,7 @@
 
     private void GoBack()
     {
-        Nav.NavigateTo("/calendar");
+        Nav.NavigateTo("/cook/calendar");
     }
 
     private void ShowAddModal()
@@ -218,8 +218,7 @@
 
     private void DeleteEvent(int id)
     {
-        if (isDayClosed)
-            return;
+        if (isDayClosed) return;
 
         CalendarService.DeleteEvent(id);
         LoadEvents();

@@ -12,6 +12,7 @@ namespace CSE325_visioncoders.Services
         public LoginResponse? CurrentUser { get; private set; }
         public bool IsLoggedIn => CurrentUser != null;
         public string? Role => CurrentUser?.Role;
+        public string? UserId => CurrentUser?.UserId;
 
         public event Action? OnChange;
 

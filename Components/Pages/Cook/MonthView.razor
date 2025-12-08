@@ -49,15 +49,10 @@
                         <!-- DATE -->
                         <div class="d-flex justify-content-between">
                             <strong>@day.Day</strong>
-
-                            @if (menuByDate.TryGetValue(day, out var md) && md.ConfirmationsCount > 0)
-                            {
-                                <span class="badge bg-info">@md.ConfirmationsCount</span>
-                            }
                         </div>
 
                         <!-- MENU DISHES -->
-                        @if (menuByDate.TryGetValue(day, out var menu))
+                        @if (menuByDate.TryGetValue(day.Date, out var menu))
                         {
                             @foreach (var dish in menu.Dishes)
                             {
@@ -70,7 +65,7 @@
 
                         <!-- EVENTS -->
                         @{
-                            var evs = CalendarService.GetEventsByDay(day).ToList();
+                            var evs = CalendarService.GetEventsByDay(day.Date).ToList();
                         }
 
                         @if (evs.Any())
@@ -78,16 +73,12 @@
                             <div class="mt-1 small">
                                 @foreach (var ev in evs.Take(3))
                                 {
-                                    <span title="@($"{ev.Title} ({ev.Start:HH:mm})")">
-                                        @GetEventIcon(ev.Category)
-                                    </span>
+                                    <span>@GetEventIcon(ev.Category)</span>
                                 }
 
                                 @if (evs.Count > 3)
                                 {
-                                    <span title="@($"{evs.Count - 3} more events")">
-                                        +@((evs.Count - 3))
-                                    </span>
+                                    <span>+@((evs.Count - 3))</span>
                                 }
                             </div>
                         }
@@ -123,13 +114,11 @@
         weeks.Clear();
         menuByDate.Clear();
 
-        // 1. Calculate first day of the grid
         var firstDay = new DateTime(currentMonth.Year, currentMonth.Month, 1);
         int diff = (7 + (int)firstDay.DayOfWeek - 1) % 7;
 
         var startGrid = firstDay.AddDays(-diff);
 
-        // 2. Build 6 weeks (42 days)
         for (int w = 0; w < 6; w++)
         {
             var week = new List<DateTime>();
@@ -139,14 +128,13 @@
             weeks.Add(week);
         }
 
-        // 3. Load menus for visible range
         var start = weeks.First().First();
         var end = weeks.Last().Last();
 
         var menus = CalendarService.GetMenuForRange(start, end);
 
         foreach (var m in menus)
-            menuByDate[m.Date] = m;
+            menuByDate[m.Date.Date] = m;
     }
 
     private void PreviousMonth()
@@ -163,12 +151,12 @@
 
     private void GoToWeekly()
     {
-        Nav.NavigateTo("/calendar");
+        Nav.NavigateTo("/cook/calendar");
     }
 
     private void GoToDay(DateTime day)
     {
-        Nav.NavigateTo($"/calendar/day/{day:yyyy-MM-dd}");
+        Nav.NavigateTo($"/cook/calendar/day/{day:yyyy-MM-dd}");
     }
 
     private string GetEventIcon(CalendarEventCategory cat)

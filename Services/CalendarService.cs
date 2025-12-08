@@ -149,6 +149,7 @@ namespace CSE325_visioncoders.Services
                     .Select(x => new MenuDish
                     {
                         Index = x.Index,
+                        MealId = x.MealId,
                         Name = x.Name,
                         Notes = x.Notes
                     })
@@ -324,6 +325,7 @@ namespace CSE325_visioncoders.Services
                     .Select(d => new MenuDish
                     {
                         Index = d.Index,
+                        MealId = d.MealId,
                         Name = d.Name,
                         Notes = d.Notes
                     })

@@ -41,6 +41,7 @@ builder.Services.Configure<MongoDbSettings>(
     builder.Configuration.GetSection("MongoDbSettings"));
 
 builder.Services.AddSingleton<UserService>();
+builder.Services.AddSingleton<InventoryService>();
 
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddHttpClient();  
@@ -156,7 +157,9 @@ app.MapPost("/api/register", async (RegisterRequest req, UserService userService
         Name = req.Name,
         Email = req.Email,
         PasswordHash = PasswordHasher.Hash(req.Password),
-        Role = string.IsNullOrWhiteSpace(req.Role) ? "customer" : req.Role
+        Role = string.IsNullOrWhiteSpace(req.Role) ? "customer" : req.Role,
+        Phone = string.IsNullOrWhiteSpace(req.Phone) ? null : req.Phone,
+        Address = string.IsNullOrWhiteSpace(req.Address) ? null : req.Address
     };
 
     await userService.CreateUserAsync(user);

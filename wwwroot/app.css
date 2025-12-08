@@ -419,3 +419,66 @@ h1:focus {
         width: 100%;
     }
 }
+
+
+/* Custommers tab */
+.customers-layout {
+    display: grid;
+    grid-template-columns: 1.1fr 2fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.customers-list {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.customers-details {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.customer-row {
+    cursor: pointer;
+    padding: 0.6rem 0.75rem;
+}
+
+.customer-row .customer-name {
+    font-weight: 600;
+}
+
+.customer-row.active {
+    background-color: #fec707;
+    color: #fff;
+}
+
+.orders-history {
+    margin-top: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .customers-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* Inventory tab */
+.inventory-page {
+    margin-top: 1rem;
+}
+
+.inventory-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.75rem;
+}
+
+.inventory-form {
+    max-width: 500px;
+}

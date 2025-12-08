@@ -1,8 +1,13 @@
 @page "/cook/meals/edit/{Id}"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "cook,admin")]
 @rendermode InteractiveServer
+
+@using System.IO
+@using System.Linq
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
+@using Microsoft.AspNetCore.Components.Forms
+
 @inject MealService _mealService
 @inject IWebHostEnvironment Env
 @inject NavigationManager Nav
@@ -12,6 +17,11 @@
     <img class="titleIcon" src="img/mealIcon.svg" alt="meal icon">
     <a>Edit Meal</a>
 </div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
 
 @if (meal is null)
 {
@@ -90,6 +100,11 @@ else
     [Parameter] public string Id { get; set; } = default!;
     private Meal? meal;
 
+    // Max file size for meal images (25 MB)
+    private const long MaxImageSize = 25L * 1024 * 1024;
+
+    private string? errorMessage;
+
     protected override async Task OnInitializedAsync()
     {
         meal = await _mealService.GetByIdAsync(Id);
@@ -103,8 +118,6 @@ else
     {
         if (meal is null) return;
 
-        // Ajusta según tu firma real del servicio:
-        // await _meal_service.UpdateAsync(meal.Id!, meal); o await _meal_service.UpdateAsync(meal);
         await _mealService.UpdateAsync(meal);
         Nav.NavigateTo("/cook/meals");
     }
@@ -120,6 +133,8 @@ else
 
     private async Task HandleImageSelected(InputFileChangeEventArgs e)
     {
+        errorMessage = null;
+
         if (meal is null) return;
 
         var file = e.File;
@@ -127,7 +142,19 @@ else
 
         var ext = Path.GetExtension(file.Name).ToLowerInvariant();
         var allowed = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
-        if (!allowed.Contains(ext)) return;
+        if (!allowed.Contains(ext))
+        {
+            errorMessage = "Invalid image type. Please upload a JPG, PNG, GIF, or WEBP file.";
+            return;
+        }
+
+        if (file.Size > MaxImageSize)
+        {
+            var sizeMb = file.Size / 1024 / 1024;
+            var maxMb = MaxImageSize / 1024 / 1024;
+            errorMessage = $"Image is too large ({sizeMb} MB). Max allowed is {maxMb} MB. Please upload a smaller image.";
+            return;
+        }
 
         var uploadsFolder = Path.Combine(Env.WebRootPath, "img", "meals");
         Directory.CreateDirectory(uploadsFolder);
@@ -135,7 +162,7 @@ else
         var fileName = $"{Guid.NewGuid()}{ext}";
         var filePath = Path.Combine(uploadsFolder, fileName);
 
-        await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+        await using var stream = file.OpenReadStream(MaxImageSize);
         await using var fs = File.Create(filePath);
         await stream.CopyToAsync(fs);
 

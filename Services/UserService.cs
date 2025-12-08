@@ -24,5 +24,11 @@ namespace CSE325_visioncoders.Services
         {
             await _users.InsertOneAsync(user);
         }
+        
+        public async Task<List<User>> GetCustomersAsync()
+        {
+            var filter = Builders<User>.Filter.Eq(u => u.Role, "customer");
+            return await _users.Find(filter).ToListAsync();
+        }
     }
 }

@@ -15,6 +15,9 @@ public interface IOrderService
     Task DeleteAsync(string id);
 
     Task<List<Order>> GetByLocalWindowAsync(DateTime localStart, DateTime localEnd, string timeZoneId);
+
+    //FINAL METHOD USED BY CUSTOMERS TAB
+    Task<List<Order>> GetOrdersByCustomerIdAsync(string customerId);
 }
 
 public class OrderService : IOrderService
@@ -25,8 +28,8 @@ public class OrderService : IOrderService
     {
         var connectionString = configuration.GetConnectionString("MongoDb");
         var client = new MongoClient(connectionString);
-        var database = client.GetDatabase("lunchmate");  // ajusta si tu DB tiene otro nombre
-        _orders = database.GetCollection<Order>("orders"); // ajusta si la colección se llama distinto
+        var database = client.GetDatabase("lunchmate"); 
+        _orders = database.GetCollection<Order>("orders");
     }
 
     public async Task<List<Order>> GetAsync() =>
@@ -46,7 +49,6 @@ public class OrderService : IOrderService
     public async Task DeleteAsync(string id) =>
         await _orders.DeleteOneAsync(o => o.Id == id);
 
-    // IMPLEMENTACIÓN que coincide con la interfaz
     public async Task<List<Order>> GetByLocalWindowAsync(DateTime localStart, DateTime localEnd, string timeZoneId)
     {
         var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
@@ -58,6 +60,25 @@ public class OrderService : IOrderService
 
         return await _orders.Find(filter)
                             .SortBy(o => o.CreatedAt)
+                            .ToListAsync();
+    }
+
+    //FINAL METHOD USED BY CUSTOMERS TAB
+    public async Task<List<Order>> GetOrdersByCustomerIdAsync(string customerId)
+    {
+        var customerFilter = Builders<Order>.Filter.Eq(o => o.CustomerId, customerId);
+
+        // Only delivered or cancelled orders
+        var statusFilter = Builders<Order>.Filter.In(o => o.Status, new[] 
+        { 
+            OrderStatus.Delivered, 
+            OrderStatus.Cancelled 
+        });
+
+        var filter = Builders<Order>.Filter.And(customerFilter, statusFilter);
+
+        return await _orders.Find(filter)
+                            .SortByDescending(o => o.CreatedAt)
                             .ToListAsync();
     }
 }

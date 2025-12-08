@@ -2,10 +2,182 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "cook,admin")]
 @layout MainLayout
 
+@using System.Linq
+@using CSE325_visioncoders.Models
+@using CSE325_visioncoders.Services
+@inject UserService UserService
+@inject IOrderService OrderService
+@inject MealService MealService
+
 <div class="titleBar">
-    <img class="titleIcon" src="img/customerIcon.svg" alt="customers icon">    <a>Customers</a>
+    <img class="titleIcon" src="img/customerIcon.svg" alt="customers icon">
+    <a>Customers</a>
 </div>
 
-@code {
+@if (isLoading)
+{
+    <p>Loading customers...</p>
+}
+else
+{
+    <div class="customers-layout">
+        <!-- LEFT: list of customers (NAME ONLY) -->
+        <div class="customers-list">
+            <h4>All Customers</h4>
 
+            @if (customers is null || customers.Count == 0)
+            {
+                <p>No customers have registered yet.</p>
+            }
+            else
+            {
+                <ul class="list-group">
+                    @foreach (var c in customers)
+                    {
+                        <li class="list-group-item customer-row
+                                   @(selectedCustomer?.Id == c.Id ? "active" : "")"
+                            @onclick="@(() => SelectCustomer(c))">
+
+                            <span class="customer-name">@c.Name</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+
+        <!-- RIGHT: selected customer info + order history -->
+        <div class="customers-details">
+            @if (selectedCustomer is null)
+            {
+                <p>Select a customer to view their information and order history.</p>
+            }
+            else
+            {
+                <h4>@selectedCustomer.Name</h4>
+
+                <p><strong>Email:</strong> @selectedCustomer.Email</p>
+                <p><strong>Role:</strong> @selectedCustomer.Role</p>
+                <p><strong>Phone:</strong> @(string.IsNullOrEmpty(selectedCustomer.Phone) ? "-" : selectedCustomer.Phone)</p>
+                <p><strong>Address:</strong> @(string.IsNullOrEmpty(selectedCustomer.Address) ? "-" : selectedCustomer.Address)</p>
+
+                <div class="orders-history">
+                    <h5>Order History (Completed / Cancelled)</h5>
+
+                    @if (ordersLoading)
+                    {
+                        <p>Loading orders...</p>
+                    }
+                    else if (customerOrders is null || customerOrders.Count == 0)
+                    {
+                        <p>No past orders found for this customer.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date &amp; Time</th>
+                                    <th>Items Ordered</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var order in customerOrders)
+                                {
+                                    <tr>
+                                        <!-- Created at date/time -->
+                                        <td>@order.CreatedAt.ToLocalTime().ToString("g")</td>
+
+                                        <!-- Meal name based on MealId -->
+                                        <td>@GetOrderItemsSummary(order)</td>
+
+                                        <!-- Total amount at order time -->
+                                        <td>@order.PriceAtOrder.ToString("C")</td>
+
+                                        <!-- Delivered / Cancelled -->
+                                        <td>@GetStatusLabel(order.Status)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private List<User>? customers;
+    private User? selectedCustomer;
+    private List<Order>? customerOrders;
+
+    private bool isLoading = true;
+    private bool ordersLoading = false;
+
+    private readonly Dictionary<string, string> _mealNames = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        customers = await UserService.GetCustomersAsync();
+        isLoading = false;
+    }
+
+    private async Task LoadOrdersForCustomer(User customer)
+    {
+        ordersLoading = true;
+
+        // load orders for this customer
+        customerOrders = await OrderService.GetOrdersByCustomerIdAsync(customer.Id!);
+
+        _mealNames.Clear();
+
+        var mealIds = customerOrders
+            .Where(o => !string.IsNullOrEmpty(o.MealId))
+            .Select(o => o.MealId)
+            .Distinct()
+            .ToList();
+
+        foreach (var mealId in mealIds)
+        {
+            var meal = await MealService.GetByIdAsync(mealId);
+            if (meal != null)
+            {
+                _mealNames[mealId] = meal.Name;
+            }
+        }
+
+        ordersLoading = false;
+        StateHasChanged();
+    }
+
+    private async void SelectCustomer(User customer)
+    {
+        selectedCustomer = customer;
+        await LoadOrdersForCustomer(customer);
+    }
+
+    // Generate a summary string for the items in the order
+    private string GetOrderItemsSummary(Order order)
+    {
+        if (string.IsNullOrEmpty(order.MealId))
+            return "-";
+
+        if (_mealNames.TryGetValue(order.MealId, out var name))
+            return name;
+
+        return "Unknown meal";
+    }
+
+    // Get a user-friendly label for the order status
+    private string GetStatusLabel(OrderStatus status)
+    {
+        return status switch
+        {
+            OrderStatus.Delivered => "Delivered",
+            OrderStatus.Cancelled => "Cancelled",
+            _ => "History"
+        };
+    }
 }

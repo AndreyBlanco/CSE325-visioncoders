@@ -1,0 +1,375 @@
+@page "/profile"
+@page "/cook/profile"
+@page "/customer/profile"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "cook,admin,customer")]
+@rendermode InteractiveServer
+
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using CSE325_visioncoders.Models
+@using CSE325_visioncoders.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using CSE325_visioncoders.Components.Shared
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject UserService UserService
+@inject NavigationManager Nav
+@inject IWebHostEnvironment Env
+
+@layout MainLayout
+
+<PageTitle>Profile</PageTitle>
+
+<PageHeader Icon="img/profile.svg" Title="Profile" />
+
+<div class="profile-container">
+
+    @if (!string.IsNullOrEmpty(AlertMessage))
+    {
+        <div class="alert @AlertCss">@AlertMessage</div>
+    }
+
+    @if (IsLoading)
+    {
+        <p>Loading profile...</p>
+    }
+    else if (CurrentUser is null)
+    {
+        <p>Could not load your profile information.</p>
+    }
+    else
+    {
+        <!-- HEADER: avatar + name + email -->
+        <div class="profile-header">
+            <div class="profile-avatar-wrapper">
+                @if (HasProfileImage)
+                {
+                    <!-- Real uploaded photo -->
+                    <img src="@CurrentUser!.ProfileImageUrl"
+                         class="profile-avatar-photo"
+                         alt="Profile picture" />
+                }
+                else
+                {
+                    <!-- Initials avatar: yellow ring + blue inner circle -->
+                    <div class="profile-avatar-ring">
+                        <div class="profile-avatar-initials">
+                            @UserInitials
+                        </div>
+                    </div>
+                }
+
+                <label class="profile-avatar-upload">
+                    Change
+                    <InputFile OnChange="OnProfileImageSelected" />
+                </label>
+            </div>
+
+            <div class="profile-name">@CurrentUser.Name</div>
+            <div class="profile-email">@CurrentUser.Email</div>
+        </div>
+
+        <!-- LEFT / RIGHT CARDS -->
+        <div class="profile-sections">
+
+            <!-- LEFT: INFORMATION -->
+            <div class="profile-card">
+                <h5>Information</h5>
+
+                <EditForm Model="@EditModel" OnValidSubmit="SaveProfileAsync">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="mb-2">
+                        <label class="form-label">Full name</label>
+                        <InputText class="form-control" @bind-Value="EditModel.Name" />
+                        <ValidationMessage For="() => EditModel.Name" />
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">Email</label>
+                        <input class="form-control" value="@CurrentUser.Email" disabled />
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">Phone</label>
+                        <InputText class="form-control" @bind-Value="EditModel.Phone" />
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">Address</label>
+                        <InputText class="form-control" @bind-Value="EditModel.Address" />
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">Role</label>
+                        <input class="form-control" value="@CurrentUser.Role" disabled />
+                    </div>
+
+                    <button class="btn btn-primary" type="submit" disabled="@IsSavingProfile">
+                        Save Changes
+                    </button>
+                </EditForm>
+            </div>
+
+            <!-- RIGHT: CHANGE PASSWORD -->
+            <div class="profile-card">
+                <h5>Change Password</h5>
+
+                <EditForm Model="@PasswordModel" OnValidSubmit="ChangePasswordAsync">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="mb-2 password-field">
+                        <label class="form-label">Current password</label>
+                        <InputText type="@CurrentPwInputType"
+                                   class="form-control"
+                                   @bind-Value="PasswordModel.CurrentPassword" />
+                        <button type="button"
+                                class="password-toggle"
+                                @onclick="ToggleCurrentPwVisibility">
+                            <span class="eye-icon @(ShowCurrentPassword ? "eye-open" : "eye-closed")"></span>
+                        </button>
+                        <ValidationMessage For="() => PasswordModel.CurrentPassword" />
+                    </div>
+
+                    <div class="mb-2 password-field">
+                        <label class="form-label">New password</label>
+                        <InputText type="@NewPwInputType"
+                                   class="form-control"
+                                   @bind-Value="PasswordModel.NewPassword" />
+                        <button type="button"
+                                class="password-toggle"
+                                @onclick="ToggleNewPwVisibility">
+                            <span class="eye-icon @(ShowNewPassword ? "eye-open" : "eye-closed")"></span>
+                        </button>
+                        <ValidationMessage For="() => PasswordModel.NewPassword" />
+                    </div>
+
+                    <div class="mb-2 password-field">
+                        <label class="form-label">Confirm new password</label>
+                        <InputText type="@ConfirmPwInputType"
+                                   class="form-control"
+                                   @bind-Value="PasswordModel.ConfirmNewPassword" />
+                        <button type="button"
+                                class="password-toggle"
+                                @onclick="ToggleConfirmPwVisibility">
+                            <span class="eye-icon @(ShowConfirmPassword ? "eye-open" : "eye-closed")"></span>
+                        </button>
+                        <ValidationMessage For="() => PasswordModel.ConfirmNewPassword" />
+                    </div>
+
+                    <button class="btn btn-outline-secondary"
+                            type="submit"
+                            disabled="@IsChangingPassword">
+                        Change Password
+                    </button>
+                </EditForm>
+            </div>
+
+        </div>
+    }
+</div>
+
+@code {
+    public class UpdateProfileForm
+    {
+        [Required]
+        public string Name { get; set; } = string.Empty;
+
+        public string? Phone { get; set; }
+        public string? Address { get; set; }
+    }
+
+    public class ChangePasswordForm
+    {
+        [Required]
+        public string CurrentPassword { get; set; } = string.Empty;
+
+        [Required, MinLength(6)]
+        public string NewPassword { get; set; } = string.Empty;
+
+        [Required, Compare("NewPassword", ErrorMessage = "Passwords do not match.")]
+        public string ConfirmNewPassword { get; set; } = string.Empty;
+    }
+
+    private User? CurrentUser;
+    private UpdateProfileForm EditModel = new();
+    private ChangePasswordForm PasswordModel = new();
+
+    private bool IsLoading = true;
+    private bool IsSavingProfile = false;
+    private bool IsChangingPassword = false;
+
+    private bool ShowCurrentPassword = false;
+    private bool ShowNewPassword = false;
+    private bool ShowConfirmPassword = false;
+
+    private string? AlertMessage;
+    private string AlertCss = "alert-success";
+
+    // Check if user has a profile image uploaded
+    private bool HasProfileImage =>
+        !string.IsNullOrWhiteSpace(CurrentUser?.ProfileImageUrl);
+
+    private string UserInitials
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(CurrentUser?.Name))
+                return "LM";
+
+            var parts = CurrentUser.Name
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Take(2)
+                .Select(p => char.ToUpperInvariant(p[0]));
+
+            return string.Concat(parts);
+        }
+    }
+
+    // Input types for password fields based on visibility toggles  
+    private string CurrentPwInputType => ShowCurrentPassword ? "text" : "password";
+    private string NewPwInputType => ShowNewPassword ? "text" : "password";
+    private string ConfirmPwInputType => ShowConfirmPassword ? "text" : "password";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfileAsync();
+    }
+
+    // Load current user's profile information
+    private async Task LoadProfileAsync()
+    {
+        IsLoading = true;
+        AlertMessage = null;
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var principal = state.User;
+
+        if (principal?.Identity?.IsAuthenticated != true)
+        {
+            Nav.NavigateTo("/login", true);
+            return;
+        }
+
+        var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            IsLoading = false;
+            AlertCss = "alert-danger";
+            AlertMessage = "No user id found in claims.";
+            return;
+        }
+
+        CurrentUser = await UserService.GetByIdAsync(userId);
+
+        if (CurrentUser != null)
+        {
+            EditModel = new UpdateProfileForm
+            {
+                Name = CurrentUser.Name,
+                Phone = CurrentUser.Phone,
+                Address = CurrentUser.Address
+            };
+        }
+
+        IsLoading = false;
+        StateHasChanged();
+    }
+
+    // Save profile changes
+    private async Task SaveProfileAsync()
+    {
+        if (CurrentUser?.Id is null) return;
+
+        IsSavingProfile = true;
+        AlertMessage = null;
+
+        await UserService.UpdateProfileAsync(
+            id: CurrentUser.Id,
+            name: EditModel.Name,
+            phone: string.IsNullOrWhiteSpace(EditModel.Phone) ? null : EditModel.Phone,
+            address: string.IsNullOrWhiteSpace(EditModel.Address) ? null : EditModel.Address
+        );
+
+        CurrentUser.Name = EditModel.Name;
+        CurrentUser.Phone = EditModel.Phone;
+        CurrentUser.Address = EditModel.Address;
+
+        IsSavingProfile = false;
+        AlertCss = "alert-success";
+        AlertMessage = "Profile updated successfully.";
+    }
+
+    // Change user password
+    private async Task ChangePasswordAsync()
+    {
+        if (CurrentUser?.Id is null) return;
+
+        if (PasswordModel.NewPassword != PasswordModel.ConfirmNewPassword)
+        {
+            AlertCss = "alert-danger";
+            AlertMessage = "New password and confirmation do not match.";
+            return;
+        }
+
+        IsChangingPassword = true;
+        AlertMessage = null;
+
+        var ok = await UserService.ChangePasswordAsync(
+            id: CurrentUser.Id,
+            currentPassword: PasswordModel.CurrentPassword,
+            newPassword: PasswordModel.NewPassword
+        );
+
+        IsChangingPassword = false;
+
+        if (ok)
+        {
+            AlertCss = "alert-success";
+            AlertMessage = "Password changed successfully.";
+            PasswordModel = new ChangePasswordForm();
+        }
+        else
+        {
+            AlertCss = "alert-danger";
+            AlertMessage = "Current password is incorrect.";
+        }
+    }
+
+    // Handle profile image upload
+    private async Task OnProfileImageSelected(InputFileChangeEventArgs e)
+    {
+        if (CurrentUser?.Id is null) return;
+
+        var file = e.File;
+        if (file is null) return;
+
+        var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+        var allowed = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+        if (!allowed.Contains(ext)) return;
+
+        var uploadsFolder = Path.Combine(Env.WebRootPath, "img", "profiles");
+        Directory.CreateDirectory(uploadsFolder);
+
+        var fileName = $"{Guid.NewGuid()}{ext}";
+        var filePath = Path.Combine(uploadsFolder, fileName);
+
+        await using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+        await using var fs = File.Create(filePath);
+        await stream.CopyToAsync(fs);
+
+        var relativeUrl = $"img/profiles/{fileName}";
+        await UserService.UpdateProfileImageAsync(CurrentUser.Id, relativeUrl);
+        CurrentUser.ProfileImageUrl = relativeUrl;
+
+        StateHasChanged();
+    }
+
+    // Toggle password visibility
+    private void ToggleCurrentPwVisibility() => ShowCurrentPassword = !ShowCurrentPassword;
+    private void ToggleNewPwVisibility() => ShowNewPassword = !ShowNewPassword;
+    private void ToggleConfirmPwVisibility() => ShowConfirmPassword = !ShowConfirmPassword;
+}

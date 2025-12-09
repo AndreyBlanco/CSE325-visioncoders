@@ -5,14 +5,17 @@
 @using System.Linq
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
+@using CSE325_visioncoders.Components.Shared
 @inject UserService UserService
 @inject IOrderService OrderService
 @inject MealService MealService
 
-<div class="titleBar">
+@* <div class="titleBar">
     <img class="titleIcon" src="img/customerIcon.svg" alt="customers icon">
     <a>Customers</a>
-</div>
+</div> *@
+
+<PageHeader Icon="img/customerIcon.svg" Title="Customers" />
 
 @if (isLoading)
 {
@@ -93,7 +96,7 @@ else
                                         <td>@GetOrderItemsSummary(order)</td>
 
                                         <!-- Total amount at order time -->
-                                        <td>@order.PriceAtOrder.ToString("C")</td>
+                                        <td>@order.PriceAtOrder.ToString("C", new System.Globalization.CultureInfo("en-US"))</td>
 
                                         <!-- Delivered / Cancelled -->
                                         <td>@GetStatusLabel(order.Status)</td>

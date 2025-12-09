@@ -24,8 +24,8 @@
     background-size: cover;
 }
 
-.bi-dashboard-fill-nav-menu {
-    background-image: url("img/dashboardIcon.svg");
+.bi-person-fill-nav-menu {
+    background-image: url("img/profile.svg");
 }
 
 .bi-order-fill-nav-menu {

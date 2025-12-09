@@ -2,8 +2,10 @@
 @attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 @using CSE325_visioncoders.Services
 @using CSE325_visioncoders.Models
+@using Microsoft.AspNetCore.Components.Authorization
 @inject AuthService Auth
 @inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
 
 <h3>Login</h3>
 
@@ -28,8 +30,19 @@
     private string actionUrl = "";
     private string? errorMessage;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        // 1) If already logged in, send user to homepage, no login needed
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            Nav.NavigateTo("/homepage", forceLoad: true);
+            return;
+        }
+
+        // 2) Existing query/error handling logic
         var uri = Nav.ToAbsoluteUri(Nav.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
 
@@ -44,6 +57,7 @@
             };
         }
 
+        // 3) Set form action URL with returnUrl if present
         var returnUrl = query.Get("returnUrl");
         var path = "/auth/login-form";
         if (!string.IsNullOrEmpty(returnUrl))

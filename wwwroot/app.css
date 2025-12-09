@@ -1,5 +1,5 @@
 html, body {
-    font-family: 'Montserrat', Helvetica, Arial, sans-serif;
+    font-family: 'Montserrat', Helvetica;
 }
 
 a, .btn-link {
@@ -514,4 +514,582 @@ h1:focus {
 
 .inventory-form {
     max-width: 500px;
+}
+
+/* Profile Tab */
+/* ===== PROFILE PAGE ===== */
+
+.profile-container {
+    max-width: 900px;
+    margin: 2rem auto 3rem;
+}
+
+/* header: avatar + name + email */
+.profile-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+/* always a circle, even before image */
+.profile-avatar-wrapper {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+/* when there IS a real photo */
+.profile-avatar-photo {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+/* initials avatar: outer yellow ring */
+.profile-avatar-ring {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background-color: #fec707; /* yellow */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+/* initials avatar: inner blue circle + text */
+.profile-avatar-initials {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background-color: #133956; /* dark blue */
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 3rem;
+    text-transform: uppercase;
+}
+
+/* fallback class (you can still use this, but avatar-photo / ring are main ones) */
+.profile-avatar {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    background-color: #f5f5f5;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Change button on avatar */
+.profile-avatar-upload {
+    position: absolute;
+    right: -6px;
+    bottom: -6px;
+    background: #fec707;
+    color: #133956;
+    font-size: 0.8rem;
+    padding: 4px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+
+.profile-avatar-upload input[type="file"] {
+    display: none;
+}
+
+.profile-name {
+    font-size: 1.6rem;
+    font-weight: 600;
+}
+
+.profile-email {
+    font-size: 0.95rem;
+    color: #666;
+}
+
+/* two cards side by side */
+.profile-sections {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+}
+
+.profile-card {
+    width: 360px;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 1.5rem 1.5rem 1.25rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    text-align: left;
+}
+
+.profile-card h5 {
+    margin-bottom: 1rem;
+    font-weight: 600;
+    color: #f07f1a; /* warm orange title */
+}
+
+/* password field with eye icon */
+.password-field {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.password-field .form-control {
+    padding-right: 2.2rem; /* room for eye button */
+}
+
+.password-toggle {
+    position: absolute;
+    right: 0.4rem;
+    top: 50%;
+    transform: translateY(-10%);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
+/* simple eye icon using borders */
+.eye-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    border: 2px solid #999;
+    position: relative;
+    display: inline-block;
+}
+
+/* "pupil" */
+.eye-icon::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #999;
+    transform: translate(-50%, -50%);
+}
+
+/* closed eye: add a diagonal line */
+.eye-closed::before {
+    content: "";
+    position: absolute;
+    left: -2px;
+    right: -2px;
+    top: 50%;
+    height: 2px;
+    background: #999;
+    transform: rotate(-35deg);
+}
+
+/* responsive: stack cards on small screens */
+@media (max-width: 900px) {
+    .profile-container {
+        max-width: 100%;
+        padding: 0 1rem 2rem;
+    }
+
+    .profile-sections {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .profile-card {
+        width: 100%;
+        max-width: 420px;
+    }
+}
+
+
+/* --- Shared page header with profile avatar --- */
+
+.titleBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #133956;
+    color: #ffffff;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.titleBar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.titleIcon {
+    width: 32px;
+    height: 32px;
+}
+
+/* right side: small circle avatar */
+.titleBar-right {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.topbar-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #ffffff;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+/* when no picture: initials in theme colors */
+.topbar-avatar.initials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #fec707;
+    color: #133956;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+
+/* === HOME PAGE LAYOUT === */
+
+.home-page {
+    padding: 2rem 2.5rem;
+}
+
+@media (max-width: 768px) {
+    .home-page {
+        padding: 1.25rem 1rem;
+    }
+}
+
+/* HERO / TAGLINE */
+
+.home-hero {
+    background: linear-gradient(135deg, #133956 0%, #0d2437 60%, #f07f1a 100%);
+    border-radius: 18px;
+    padding: 1.75rem 2rem;
+    margin-bottom: 1.75rem;
+    color: #ffffff;
+}
+
+.home-hero-text {
+    max-width: 640px;
+}
+
+.home-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.home-tagline {
+    font-size: 1rem;
+    opacity: 0.9;
+    margin-bottom: 1.25rem;
+}
+
+.home-cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.home-cta-primary {
+    background-color: #fec707;
+    border-color: #fec707;
+    color: #133956;
+    font-weight: 600;
+    padding: 0.45rem 1.2rem;
+    border-radius: 999px;
+}
+
+.home-cta-primary:hover {
+    background-color: #f07f1a;
+    border-color: #f07f1a;
+    color: #ffffff;
+}
+
+.home-cta-secondary {
+    border-radius: 999px;
+    border: 1px solid #ffffff;
+    color: #ffffff;
+    padding: 0.45rem 1.2rem;
+}
+
+.home-cta-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* MAIN AREA */
+
+.home-main {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr;
+    gap: 1.75rem;
+}
+
+@media (max-width: 992px) {
+    .home-main {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* CAROUSEL */
+
+.home-carousel-wrapper {
+    display: flex;
+    justify-content: center;
+}
+
+.home-carousel {
+    width: 100%;
+    max-width: 900px;
+}
+
+.home-image-frame {
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+    margin: 0 auto;
+}
+
+/* image bigger with small side space */
+.home-slide-image {
+    width: 100%;
+    height: 380px;
+    object-fit: cover;
+    display: block;
+}
+
+/* top overlay with name + price */
+.home-slide-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.65), transparent);
+    color: #ffffff;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+}
+
+.home-slide-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.home-slide-price {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fec707;
+}
+
+/* arrows, subtle */
+
+.home-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.35);
+    color: #ffffff;
+    font-size: 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.home-arrow-left {
+    left: 10px;
+}
+
+.home-arrow-right {
+    right: 10px;
+}
+
+.home-arrow:hover {
+    background: #f07f1a;
+    transform: translateY(-50%) scale(1.05);
+}
+
+/* dots */
+
+.home-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+}
+
+.home-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: none;
+    background: #d0d4dc;
+    cursor: pointer;
+    padding: 0;
+}
+
+.home-dot.active {
+    background: #133956;
+}
+
+/* fade-in animation */
+
+.fade-in {
+    animation: homeFadeIn 0.6s ease-in-out;
+}
+
+@keyframes homeFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(1.02);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* QUICK LINKS */
+
+.home-quicklinks {
+    align-self: start;
+}
+
+.home-quicklinks-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #133956;
+    margin-bottom: 0.75rem;
+}
+
+.home-quicklinks-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+}
+
+@media (min-width: 576px) {
+    .home-quicklinks-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.home-ql-card {
+    display: block;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    text-decoration: none;
+    color: #133956;
+    transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease;
+}
+
+.home-ql-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    background: #fef8e2;
+}
+
+.home-ql-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.home-ql-desc {
+    font-size: 0.9rem;
+    color: #555;
+}
+
+/* no meals text */
+
+.home-no-meals {
+    text-align: center;
+    color: #555;
+    font-size: 0.95rem;
+    padding: 1rem;
+}
+
+.profile-avatar-wrapper {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    margin: 0 auto 0.75rem auto;
+}
+
+/* Circle, used for both real photo and placeholder */
+.profile-avatar {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    overflow: hidden;
+    background-color: #133956; /* navy */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+/* Real uploaded image */
+.profile-avatar:not(.default-avatar) {
+    object-fit: cover;
+}
+
+/* SVG placeholder inside the circle */
+.default-avatar img {
+    width: 70%;
+    height: 70%;
+    object-fit: contain;
+}
+
+/* "Change" button */
+.profile-avatar-upload {
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fec707;
+    color: #133956;
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.profile-avatar-upload input {
+    display: none;
 }

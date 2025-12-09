@@ -5,15 +5,19 @@
 @using System.Linq
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
+@using CSE325_visioncoders.Components.Shared
 @inject IOrderService OrderService
 @inject IOrderSettingsService SettingsService
 @layout MainLayout
 
-<div class="titleBar">
+@* <div class="titleBar">
     <img class="titleIcon" src="img/orderIcon.svg" alt="order icon">
     <a>Orders</a>
-</div>
+</div> *@
 
+<PageHeader Icon="img/orderIcon.svg" Title="Orders" />
+
+@* Settings display *@
 <div style="margin:12px 0;">
     <label>Day start:</label> @settings.DayStart
         <span style="margin-left:12px;"></span>
@@ -23,6 +27,7 @@
     <button class="btn" style="margin-left:12px;" @onclick="LoadByRule">Refresh</button>
 </div>
 
+@* Orders table *@
 @if (loading)
 {
     <p>Loading...</p>
@@ -71,6 +76,7 @@ else
 
     private async Task LoadByRule()
     {
+        // Load orders based on day start and noon cut settings 
         loading = true;
         try
         {
@@ -86,6 +92,7 @@ else
             DateOnly yesterday = today.AddDays(-1);
             DateOnly tomorrow = today.AddDays(1);
 
+            // Determine the time window based on current time and settings
             if (nowLocal.TimeOfDay < noon.ToTimeSpan())
             {
                 localStart = yesterday.ToDateTime(dayStart);
@@ -99,6 +106,7 @@ else
                 windowLabel = $"{today:yyyy-MM-dd} {dayStart} → {tomorrow:yyyy-MM-dd} {dayStart}";
             }
 
+            // Fetch orders in the determined local time window
             orders = await OrderService.GetByLocalWindowAsync(localStart, localEnd, settings.TimeZoneId);
         }
         finally

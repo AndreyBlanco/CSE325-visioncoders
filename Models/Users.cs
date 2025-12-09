@@ -26,5 +26,8 @@ namespace CSE325_visioncoders.Models
 
         [BsonElement("address")]
         public string? Address { get; set; }
+
+        [BsonElement("profileImageUrl")]
+        public string? ProfileImageUrl { get; set; }
     }
 }

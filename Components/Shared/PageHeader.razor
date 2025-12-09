@@ -1,0 +1,72 @@
+@using System.Security.Claims
+@using CSE325_visioncoders.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+@inject UserService UserService
+@inject NavigationManager Nav
+
+<div class="titleBar">
+    <div class="titleBar-left">
+        <img class="titleIcon" src="@Icon" alt="@Title icon" />
+        <a>@Title</a>
+    </div>
+
+    <div class="titleBar-right" @onclick="GoToProfile">
+        @if (!string.IsNullOrWhiteSpace(ProfileImageUrl))
+        {
+            <img src="@ProfileImageUrl" class="topbar-avatar" alt="Profile" />
+        }
+        else
+        {
+            <div class="topbar-avatar initials">
+                @UserInitials
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = string.Empty;
+    [Parameter] public string Title { get; set; } = string.Empty;
+
+    private string? ProfileImageUrl;
+    private string UserInitials = "?";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var id = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            var name = user.FindFirstValue(ClaimTypes.Name) ?? string.Empty;
+
+            // Build initials: first letter of each word in name
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                UserInitials = string.Concat(
+                    name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(p => char.ToUpperInvariant(p[0]))
+                );
+            }
+
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                var dbUser = await UserService.GetByIdAsync(id);
+                ProfileImageUrl = dbUser?.ProfileImageUrl; // assumes you added this field on User
+            }
+        }
+    }
+
+    private async void GoToProfile()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+
+        if (user.IsInRole("cook") || user.IsInRole("admin"))
+            Nav.NavigateTo("/cook/profile");
+        else
+            Nav.NavigateTo("/customer/profile");
+    }
+}

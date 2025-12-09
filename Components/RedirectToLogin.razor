@@ -12,26 +12,25 @@
         var state = await AuthStateTask;
         var user = state.User;
 
+        var relative = Nav.ToBaseRelativePath(Nav.Uri);
+
+        // Allow homepage to load normally
+        if (relative == "" || relative == "/homepage")
+            return;
+
         if (user?.Identity?.IsAuthenticated == true)
         {
-            if (user.IsInRole("customer"))
-            {
-                Nav.NavigateTo("/customer/dashboard", true);
-                return;
-            }
-            if (user.IsInRole("cook") || user.IsInRole("admin"))
-            {
-                Nav.NavigateTo("/cook/dashboard", true);
-                return;
-            }
-            Nav.NavigateTo("/login", true);
+            // Redirect ALL authenticated users to homepage
+            Nav.NavigateTo("/homepage", true);
+            return;
         }
         else
         {
-            var relative = Nav.ToBaseRelativePath(Nav.Uri);
+            // Not logged in → redirect to login with returnUrl
             var url = "/login";
             if (!string.IsNullOrEmpty(relative))
                 url += "?returnUrl=" + Uri.EscapeDataString("/" + relative);
+
             Nav.NavigateTo(url, true);
         }
     }

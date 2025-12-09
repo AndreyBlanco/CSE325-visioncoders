@@ -1,0 +1,274 @@
+@page "/homepage"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@layout MainLayout
+@implements IDisposable
+
+@using CSE325_visioncoders.Services
+@using CSE325_visioncoders.Models
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject AuthService Auth
+@inject MealService MealService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="home-page">
+
+    <!-- Tagline banner -->
+    <section class="home-hero">
+        <div class="home-hero-text">
+            <h1 class="home-title">
+                Welcome back, @DisplayName!
+            </h1>
+            <p class="home-tagline">
+                LunchMate makes it easy to discover, choose, and enjoy delicious meals prepared by your favorite cooks.
+            </p>
+
+            @if (IsCustomer)
+            {
+                <div class="home-cta-row">
+                    <a href="/customer/meals" class="btn home-cta-primary">Start ordering</a>
+                    <a href="/customer/orders" class="btn home-cta-secondary">View my orders</a>
+                </div>
+            }
+            else if (IsCook)
+            {
+                <div class="home-cta-row">
+                    <a href="/cook/meals" class="btn home-cta-primary">Manage meals</a>
+                    <a href="/cook/orders" class="btn home-cta-secondary">View today’s orders</a>
+                </div>
+            }
+        </div>
+    </section>
+
+    <!-- Carousel + quick links -->
+    <section class="home-main">
+        <div class="home-carousel-wrapper">
+
+            @if (!IsLoaded)
+            {
+                <p>Loading meals…</p>
+            }
+            else if (Slides.Count == 0)
+            {
+                <p class="home-no-meals">
+                    There are no meals with images yet. Ask a cook to add some meals so we can show them here.
+                </p>
+            }
+            else
+            {
+                var slide = Slides[CurrentIndex];
+
+                <div class="home-carousel">
+
+                    <div class="home-image-frame">
+                        <!-- overlay text on top -->
+                        <div class="home-slide-overlay">
+                            <div class="home-slide-title">@slide.Name</div>
+                            @if (slide.Price > 0)
+                            {
+                                <div class="home-slide-price">@slide.Price.ToString("C", new System.Globalization.CultureInfo("en-US"))</div>
+                            }
+                        </div>
+
+                        <img @key="CurrentIndex"
+                             src="@slide.ImageUrl"
+                             alt="@slide.Name"
+                             class="home-slide-image fade-in" />
+
+                        <!-- subtle arrows -->
+                        <button type="button"
+                                class="home-arrow home-arrow-left"
+                                @onclick="PrevSlide">
+                            ‹
+                        </button>
+
+                        <button type="button"
+                                class="home-arrow home-arrow-right"
+                                @onclick="NextSlide">
+                            ›
+                        </button>
+                    </div>
+
+                    <!-- dots -->
+                    <div class="home-dots">
+                        @for (var i = 0; i < Slides.Count; i++)
+                        {
+                            <button type="button"
+                                    class="home-dot @(i == CurrentIndex ? "active" : "")"
+                                    @onclick="() => GoToSlide(i)">
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Quick links grid -->
+        <div class="home-quicklinks">
+            <h2 class="home-quicklinks-title">Quick links</h2>
+
+            <div class="home-quicklinks-grid">
+                @if (IsCustomer)
+                {
+                    <a href="/customer/meals" class="home-ql-card">
+                        <div class="home-ql-title">Browse meals</div>
+                        <div class="home-ql-desc">See what today’s cooks have prepared.</div>
+                    </a>
+                    <a href="/customer/orders" class="home-ql-card">
+                        <div class="home-ql-title">My orders</div>
+                        <div class="home-ql-desc">Review or adjust your upcoming lunches.</div>
+                    </a>
+                    <a href="/customer/profile" class="home-ql-card">
+                        <div class="home-ql-title">My profile</div>
+                        <div class="home-ql-desc">Update your info so cooks know where to deliver.</div>
+                    </a>
+                }
+                else if (IsCook)
+                {
+                    <a href="/cook/meals" class="home-ql-card">
+                        <div class="home-ql-title">Manage meals</div>
+                        <div class="home-ql-desc">Add, edit, or remove dishes from your menu.</div>
+                    </a>
+                    <a href="/cook/orders" class="home-ql-card">
+                        <div class="home-ql-title">Today’s orders</div>
+                        <div class="home-ql-desc">See what customers have requested.</div>
+                    </a>
+                    <a href="/cook/calendar" class="home-ql-card">
+                        <div class="home-ql-title">Schedule</div>
+                        <div class="home-ql-desc">Plan your cooking week with the calendar.</div>
+                    </a>
+                    <a href="/cook/inventory" class="home-ql-card">
+                        <div class="home-ql-title">Inventory</div>
+                        <div class="home-ql-desc">Track your ingredients and low-stock items.</div>
+                    </a>
+                }
+                else
+                {
+                    <div class="home-ql-card">
+                        <div class="home-ql-title">Explore</div>
+                        <div class="home-ql-desc">Log in as a cook or customer to get started.</div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+
+</div>
+
+@code {
+    private sealed class MealSlide
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public string ImageUrl { get; set; } = "img/placeholder-meal.png";
+    }
+
+    private List<MealSlide> Slides = new();
+    private int CurrentIndex = 0;
+    private bool IsLoaded = false;
+    private string DisplayName = "there";
+
+    // flags based on authenticated user's role
+    private bool IsCustomer;
+    private bool IsCook;
+
+    private System.Threading.Timer? _timer;
+    private const int SlideIntervalMs = 4000; // 4 seconds
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Make sure AuthService knows who is logged in (for DisplayName + APIs that depend on it)
+        await Auth.HydrateAsync();
+
+        // Read the authenticated user/claims from the cookie
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        IsCustomer = user.IsInRole("customer");
+        IsCook = user.IsInRole("cook") || user.IsInRole("admin");
+
+        DisplayName = !string.IsNullOrWhiteSpace(Auth.CurrentUser?.Name)
+            ? Auth.CurrentUser!.Name
+            : (user.Identity?.Name ?? "there");
+
+        var meals = await MealService.GetAsync();
+
+        Slides = meals
+            .Where(m => !string.IsNullOrWhiteSpace(m.ImageUrl))
+            .Select(m => new MealSlide
+            {
+                Id = m.Id ?? string.Empty,
+                Name = m.Name ?? "Meal",
+                Price = m.Price,
+                ImageUrl = m.ImageUrl!
+            })
+            .ToList();
+
+        if (Slides.Count == 0)
+        {
+            Slides.Add(new MealSlide
+            {
+                Name = "Your first meal here",
+                Price = 0,
+                ImageUrl = "img/placeholder-meal.png"
+            });
+        }
+
+        IsLoaded = true;
+
+        if (Slides.Count > 1)
+        {
+            _timer = new System.Threading.Timer(_ =>
+            {
+                InvokeAsync(() =>
+                {
+                    NextSlideInternal();
+                    StateHasChanged();
+                });
+            }, null, SlideIntervalMs, SlideIntervalMs);
+        }
+    }
+
+    // Advance to next slide (without resetting timer)  
+    private void NextSlideInternal()
+    {
+        if (Slides.Count == 0) return;
+        CurrentIndex = (CurrentIndex + 1) % Slides.Count;
+    }
+
+    // Advance to next slide (with timer reset)
+    private void NextSlide()
+    {
+        NextSlideInternal();
+        RestartTimer();
+    }
+
+    // Go to previous slide (with timer reset)
+    private void PrevSlide()
+    {
+        if (Slides.Count == 0) return;
+        CurrentIndex = (CurrentIndex - 1 + Slides.Count) % Slides.Count;
+        RestartTimer();
+    }
+
+    // Go to specific slide (with timer reset)
+    private void GoToSlide(int index)
+    {
+        if (index < 0 || index >= Slides.Count) return;
+        CurrentIndex = index;
+        RestartTimer();
+    }
+
+    // Restart the slide timer
+    private void RestartTimer()
+    {
+        _timer?.Change(SlideIntervalMs, SlideIntervalMs);
+    }
+
+    // Dispose the timer when component is disposed
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

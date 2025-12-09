@@ -1,4 +1,4 @@
-@page "/"
+@page "/landing"
 @attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 @layout CSE325_visioncoders.Components.Layout.PublicLayout
 @using Microsoft.AspNetCore.Components.Authorization
@@ -15,7 +15,7 @@
 @code {
     [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
 
-    private const string CustomerHome = "/customer/dashboard"; 
+    private const string CustomerHome = "/customer/profile"; 
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -28,7 +28,7 @@
         {
             if (user.IsInRole("cook") || user.IsInRole("admin"))
             {
-                Nav.NavigateTo("/cook/dashboard", forceLoad: true);
+                Nav.NavigateTo("/cook/meals", forceLoad: true);
                 return;
             }
             if (user.IsInRole("customer"))

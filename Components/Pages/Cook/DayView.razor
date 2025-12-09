@@ -3,8 +3,11 @@
 
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
+@using CSE325_visioncoders.Components.Shared
 @inject CalendarService CalendarService
 @inject NavigationManager Nav
+
+<PageHeader Icon="img/calendarIcon.svg" Title="Calendar" />
 
 <h3>Day View — @date.ToString("dddd dd MMMM")</h3>
 

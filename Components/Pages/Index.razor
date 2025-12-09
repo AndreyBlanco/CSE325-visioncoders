@@ -1,0 +1,24 @@
+@page "/"
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            // already logged in → go to homepage
+            Nav.NavigateTo("/homepage", forceLoad: true);
+        }
+        else
+        {
+            // not logged in → go to login page
+            Nav.NavigateTo("/login", forceLoad: true);
+        }
+    }
+}

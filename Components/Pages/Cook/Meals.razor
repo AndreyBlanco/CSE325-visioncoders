@@ -7,17 +7,16 @@
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Authorization
+@using CSE325_visioncoders.Components.Shared
 
 @inject MealService _mealService
 @inject IWebHostEnvironment Env
 @inject NavigationManager Nav
-@inject AuthService Auth
+@inject AuthenticationStateProvider AuthStateProvider
 @layout MainLayout
 
-<div class="titleBar">
-    <img class="titleIcon" src="img/mealIcon.svg" alt="meal icon">
-    <a>Meals</a>
-</div>
+<PageHeader Icon="img/mealIcon.svg" Title="Meals" />
 
 @if (!string.IsNullOrEmpty(errorMessage))
 {
@@ -51,7 +50,7 @@ else if (HasMeals && !showForm)
             </div>
         }
 
-        @* ADD MORE CARD - only for cooks *@
+        @* ADD MORE CARD *@
         <div class="meal-card meal-card-add" @onclick="ShowForm">
             <div class="meal-add-plus">+</div>
             <button type="button" class="btn meal-add-btn">Add More</button>
@@ -61,7 +60,7 @@ else if (HasMeals && !showForm)
 
 @if (showForm)
 {
-    @* ADD MEAL FORM (COOKS ONLY) *@
+    @* ADD MEAL FORM *@
     <div class="meal-form-container">
         <EditForm Model="@newMeal" OnValidSubmit="SaveMeal">
             <DataAnnotationsValidator />
@@ -119,9 +118,13 @@ else if (HasMeals && !showForm)
 
                 <div class="meal-cook-input">
                     <label class="me-2">Cook:</label>
+                    @* Read-only, auto-filled from logged-in cook *@
                     <InputText class="form-control meal-input-cook"
                                @bind-Value="newMeal.CookName"
-                               placeholder="Cook's name" />
+                               readonly />
+                    @* <small class="form-text text-muted">
+                        This is filled automatically from your account.
+                    </small> *@
                 </div>
 
                 <button class="btn btn-primary" type="submit">Save Meal</button>
@@ -142,13 +145,25 @@ else if (HasMeals && !showForm)
     private const long MaxImageSize = 25L * 1024 * 1024;
     private string? errorMessage;
 
+    // current cook info from auth claims
+    private string? currentCookId;
+    private string currentCookName = "Cook";
+
     protected override async Task OnInitializedAsync()
     {
+        // Get the authenticated user from claims
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            currentCookId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            currentCookName = user.Identity?.Name ?? "Cook";
+        }
+
+        // Load meals (you can switch to GetByCookAsync(currentCookId!) if you want per-cook)
         meals = await _mealService.GetAsync();
     }
-
-    // later: replace with logged-in cook
-    private string currentCookName = "Demo Cook";
 
     private bool HasMeals => meals is not null && meals.Any();
 
@@ -156,12 +171,19 @@ else if (HasMeals && !showForm)
     {
         errorMessage = null;
 
-        if (string.IsNullOrWhiteSpace(newMeal.CookName))
+        // Safety: page is [Authorize], so this SHOULD be set.
+        if (string.IsNullOrWhiteSpace(currentCookId))
         {
-            newMeal.CookName = currentCookName;
+            errorMessage = "Unable to determine cook for this account.";
+            return;
         }
 
+        // Always set cook info from the logged-in user
+        newMeal.CookId = currentCookId!;
+        newMeal.CookName = currentCookName;
+
         await _mealService.CreateAsync(newMeal);
+
         newMeal = new Meal();
         meals = await _mealService.GetAsync();
         showForm = false;
@@ -170,6 +192,14 @@ else if (HasMeals && !showForm)
     private void ShowForm()
     {
         errorMessage = null;
+
+        // Pre-fill cook info into the new meal
+        newMeal = new Meal
+        {
+            CookId = currentCookId ?? string.Empty,
+            CookName = currentCookName
+        };
+
         showForm = true;
     }
 
@@ -194,6 +224,7 @@ else if (HasMeals && !showForm)
     {
         errorMessage = null;
 
+        // Get the selected file
         var file = e.File;
         if (file is null)
             return;
@@ -201,6 +232,7 @@ else if (HasMeals && !showForm)
         var ext = Path.GetExtension(file.Name).ToLowerInvariant();
         var allowed = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 
+        // Validate file type
         if (!allowed.Contains(ext))
         {
             errorMessage = "Invalid image type. Please upload a JPG, PNG, GIF, or WEBP file.";
@@ -216,6 +248,7 @@ else if (HasMeals && !showForm)
             return;
         }
 
+        // Save the file to wwwroot/img/meals and set the ImageUrl  
         var uploadsFolder = Path.Combine(Env.WebRootPath, "img", "meals");
         Directory.CreateDirectory(uploadsFolder);
 
@@ -229,6 +262,7 @@ else if (HasMeals && !showForm)
         newMeal.ImageUrl = $"img/meals/{fileName}";
     }
 
+    // Helper to get image or placeholder
     private string GetImage(string? url)
         => string.IsNullOrWhiteSpace(url) ? "img/placeholder-meal.png" : url;
 }

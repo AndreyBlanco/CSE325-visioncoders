@@ -6,6 +6,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
+@using CSE325_visioncoders.Components.Shared
 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject MealService MealSvc
@@ -13,10 +14,12 @@
 @inject NavigationManager Nav
 @layout MainLayout
 
-<div class="titleBar">
+@* <div class="titleBar">
     <img class="titleIcon" src="img/orderIcon.svg" alt="Order icon">
     <a>My Orders</a>
-</div>
+</div> *@
+
+<PageHeader Icon="img/orderIcon.svg" Title="Order" />
 
 @if (!IsReady)
 {
@@ -127,7 +130,7 @@ else
                                                     @onchange="(e) => OnSelectMeal(dayKey, dish.MealId)" />
                                                 <label class="form-check-label" for="@($"m-{dayKey:yyyyMMdd}-{dish.Index}")">
                                                     <strong>@dish.Name</strong>
-                                                    <span class="ms-1 text-muted">(@dish.Price.ToString("C"))</span>
+                                                    <span class="ms-1 text-muted">(@dish.Price.ToString("C", new System.Globalization.CultureInfo("en-US")))</span>
                                                 </label>
                                             </div>
 
@@ -146,7 +149,7 @@ else
                                                         }
 
                                                         <div class="meal-details-meta small mt-1">
-                                                            <div><span class="label">Price:</span> @dish.Price.ToString("C")</div>
+                                                            <div><span class="label">Price:</span> @dish.Price.ToString("C", new System.Globalization.CultureInfo("en-US"))</div>
                                                             @if (!string.IsNullOrWhiteSpace(dish.CookName))
                                                             {
                                                                 <div><span class="label">Cook:</span> @dish.CookName</div>
@@ -204,6 +207,7 @@ else
     private string? FlashMessage;
     private string FlashCss = "alert-success";
 
+    // Inicialización
     protected override async Task OnInitializedAsync()
     {
         await LoadAuthAsync();
@@ -356,7 +360,7 @@ else
         }
     }
 
-    private static string? GetClaim(ClaimsPrincipal user, string type)
+    private static string? GetClaim(ClaimsPrincipal? user, string type)
         => user?.Claims?.FirstOrDefault(c => c.Type == type)?.Value;
 
     private static DateTime NormalizeLocalDate(DateTime d)
@@ -364,7 +368,7 @@ else
 
     private string FormatTooltip(CustomerOrdersService.DishInfo d)
     {
-        var price = d.Price.ToString("C");
+        var price = d.Price.ToString("C", new System.Globalization.CultureInfo("en-US"));
         var desc = string.IsNullOrWhiteSpace(d.Description) ? "" : $"\n{d.Description}";
         var ingr = string.IsNullOrWhiteSpace(d.Ingredients) ? "" : $"\nIngredients: {d.Ingredients}";
         return $"{d.Name} — {price}{desc}{ingr}";

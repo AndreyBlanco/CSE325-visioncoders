@@ -125,7 +125,7 @@
     protected override void OnInitialized()
     {
         Auth.OnChange += AuthStateChanged;
-        logoutAction = Nav.ToAbsoluteUri("/auth/logout?returnUrl=/login").ToString();
+        logoutAction = Nav.ToAbsoluteUri("/auth/logout?returnUrl=/").ToString();
     }
 
     protected override async Task OnInitializedAsync()

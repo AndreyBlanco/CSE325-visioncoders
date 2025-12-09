@@ -17,6 +17,7 @@ html, body {
 
 .landingImg {
     width: 20rem;
+    border-radius: 8px;
 }
 
 .public-wrapper {

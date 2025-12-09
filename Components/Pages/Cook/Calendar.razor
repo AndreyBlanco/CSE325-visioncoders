@@ -7,16 +7,17 @@
 @inject CalendarService CalendarService
 @inject MealService MealService
 @inject NavigationManager Nav
-
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @inject AuthenticationStateProvider AuthStateProvider
 @inject MenuDayService MenuDayService
 
-<div class="titleBar">
+@*<div class="titleBar">
     <img class="titleIcon" src="img/calendarIcon.svg" alt="calendar icon">
     <a>Calendar</a>
-</div>
+</div>*@
+
+<PageHeader Icon="img/calendarIcon.svg" Title="Calendar" />
 
 
 <!-- ALERTS -->

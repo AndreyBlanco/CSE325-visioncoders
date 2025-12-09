@@ -8,7 +8,16 @@
 @inject MealService MealService
 @inject NavigationManager Nav
 
-<PageHeader Icon="img/calendarIcon.svg" Title="Calendar" />
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+@inject MenuDayService MenuDayService
+
+<div class="titleBar">
+    <img class="titleIcon" src="img/calendarIcon.svg" alt="calendar icon">
+    <a>Calendar</a>
+</div>
+
 
 <!-- ALERTS -->
 @if (!string.IsNullOrEmpty(todayAlert) || !string.IsNullOrEmpty(tomorrowAlert))
@@ -16,7 +25,7 @@
     <div class="mb-3">
         @if (!string.IsNullOrEmpty(todayAlert))
         {
-            <div class="alert alert-info">
+            <div class="alert alert-info" style="margin-top: 1rem;">
                 @todayAlert
             </div>
         }
@@ -199,20 +208,10 @@
     private string? todayAlert;
     private string? tomorrowAlert;
 
+    private string? CookId;
+    private string TimeZoneId = "America/Bogota";
+
     private readonly string[] dayNames = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
-
-    protected override async Task OnInitializedAsync()
-    {
-        meals = await MealService.GetAsync();
-
-        var today = DateTime.Today;
-        weekStart = StartOfWeek(today);
-        weekEnd = weekStart.AddDays(6);
-
-        LoadWeek();
-        SelectDay(today);
-        UpdateAlerts();
-    }
 
     private void LoadWeek()
     {
@@ -256,14 +255,33 @@
         isDayClosed = CalendarService.IsDayClosed(selectedDate);
     }
 
-    private void SaveMenu()
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAuthAsync(); // ← nuevo
+
+        meals = await MealService.GetAsync();
+
+        var today = DateTime.Today;
+        weekStart = StartOfWeek(today);
+        weekEnd = weekStart.AddDays(6);
+
+        LoadWeek();
+        SelectDay(today);
+        UpdateAlerts();
+    }
+
+    private async void SaveMenu()
     {
         if (selectedMenuDay == null || isDayClosed) return;
+        if (string.IsNullOrWhiteSpace(CookId)) return;
+
+        await MenuDayService.UpsertMenuDayAsync(selectedMenuDay, CookId!, TimeZoneId);
 
         CalendarService.SaveMenuDay(selectedMenuDay);
         LoadWeek();
         SelectDay(selectedMenuDay.Date);
         UpdateAlerts();
+        StateHasChanged();
     }
 
     private void OnMealSelected(MenuDish dish, string? mealId)
@@ -341,6 +359,20 @@
         tomorrowAlert = tomorrowClosed
         ? $"Tomorrow ({tomorrow:dd MMM}) is CLOSED."
         : $"Tomorrow ({tomorrow:dd MMM}) cutoff 08:00.";
+    }
+
+    private static string? GetClaim(ClaimsPrincipal user, string type)
+    => user?.Claims?.FirstOrDefault(c => c.Type == type)?.Value;
+
+    private async Task LoadAuthAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+
+        CookId = GetClaim(user, ClaimTypes.NameIdentifier)
+        ?? GetClaim(user, "sub")
+        ?? GetClaim(user, "oid")
+        ?? GetClaim(user, "id");
     }
 }
 

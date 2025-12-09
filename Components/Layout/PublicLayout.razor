@@ -1,18 +1,18 @@
 @inherits LayoutComponentBase
 
-<div class="public-wrapper">
-    <header class="container" style="display:flex; gap:1rem; align-items:center; padding:1rem 0;">
-        <img src="img/lm_logo.svg" alt="LunchMate Logo" width="160" />
-        <span style="flex:1"></span>
-        <a href="/login">Login</a>
-        <a href="/register">Register</a>
-    </header>
 
-    <main class="container" style="padding:2rem 0;">
-        @Body
-    </main>
 
-    <footer class="container" style="padding:2rem 0; border-top:1px solid #eee; margin-top:2rem;">
-        <small>© @(DateTime.Now.Year) LunchMate</small>
-    </footer>
+<div class="land">
+    <img src="img/lunchvert.jpg" alt="lunch" class="landingImg">
+
+    <div class="public-wrapper">
+        <img src="img/lm_logo.svg" alt="LunchMate Logo" class="landingLogo" />
+        <main class="container" style="padding:2rem 0;">
+            @Body
+        </main>
+
+        <footer class="container" style="padding:2rem 0; border-top:1px solid #eee; margin-top:2rem;">
+            <small>© @(DateTime.Now.Year) LunchMate - VisionCoders - CSE 325 </small>
+        </footer>
+    </div>
 </div>

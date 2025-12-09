@@ -49,6 +49,8 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<CustomerOrdersService>();
 builder.Services.AddSingleton<MenuDayService>();
 
+builder.Services.AddSingleton<CSE325_visioncoders.Services.MenuDayService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

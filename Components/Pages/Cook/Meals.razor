@@ -7,14 +7,14 @@
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
 @using Microsoft.AspNetCore.Components.Forms
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
-@using CSE325_visioncoders.Components.Shared
-
 @inject MealService _mealService
 @inject IWebHostEnvironment Env
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
 @layout MainLayout
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageHeader Icon="img/mealIcon.svg" Title="Meals" />
 
@@ -121,10 +121,7 @@ else if (HasMeals && !showForm)
                     @* Read-only, auto-filled from logged-in cook *@
                     <InputText class="form-control meal-input-cook"
                                @bind-Value="newMeal.CookName"
-                               readonly />
-                    @* <small class="form-text text-muted">
-                        This is filled automatically from your account.
-                    </small> *@
+                               disabled />
                 </div>
 
                 <button class="btn btn-primary" type="submit">Save Meal</button>
@@ -141,6 +138,31 @@ else if (HasMeals && !showForm)
     private List<Meal>? meals;
     private bool showForm;
 
+   
+    private string? CookId;
+    private string CookDisplayName = "Cook";
+
+    private static string? GetClaim(ClaimsPrincipal user, string type)
+    => user?.Claims?.FirstOrDefault(c => c.Type == type)?.Value;
+
+    private async Task LoadAuthAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+
+        CookId = GetClaim(user, ClaimTypes.NameIdentifier)
+        ?? GetClaim(user, "sub")
+        ?? GetClaim(user, "oid")
+        ?? GetClaim(user, "id");
+
+        CookDisplayName = GetClaim(user, ClaimTypes.Name)
+        ?? GetClaim(user, "name")
+        ?? GetClaim(user, "preferred_username")
+        ?? GetClaim(user, "email")
+        ?? "Cook";
+    }
+    
+
     // Max size for uploaded images (25 MB)
     private const long MaxImageSize = 25L * 1024 * 1024;
     private string? errorMessage;
@@ -151,17 +173,7 @@ else if (HasMeals && !showForm)
 
     protected override async Task OnInitializedAsync()
     {
-        // Get the authenticated user from claims
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        if (user.Identity?.IsAuthenticated == true)
-        {
-            currentCookId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            currentCookName = user.Identity?.Name ?? "Cook";
-        }
-
-        // Load meals (you can switch to GetByCookAsync(currentCookId!) if you want per-cook)
+        await LoadAuthAsync();
         meals = await _mealService.GetAsync();
     }
 
@@ -177,6 +189,9 @@ else if (HasMeals && !showForm)
             errorMessage = "Unable to determine cook for this account.";
             return;
         }
+        newMeal.CookId = CookId!;
+        if (string.IsNullOrWhiteSpace(newMeal.CookName))
+            newMeal.CookName = CookDisplayName;
 
         // Always set cook info from the logged-in user
         newMeal.CookId = currentCookId!;

@@ -5,47 +5,44 @@
 @inject AuthService Auth
 @inject NavigationManager Nav
 
-<h3>Register</h3>
+<div class="titleBar">
+    <img class="titleIcon" src="img/registerIcon.svg" alt="register icon">
+    <a>Register</a>
+</div>
 
 @if (!string.IsNullOrEmpty(message))
 {
     <div class="alert @messageClass">@message</div>
 }
 
-<div class="login-form">
-    <div>
-        <label>Name</label>
-        <input @bind="name" />
-    </div>
-    <div>
-        <label>Email</label>
-        <input @bind="email" />
-    </div>
-    <div>
-        <label>Phone</label>
-        <input @bind="phone" />
-    </div>
-    <div>
-        <label>Address</label>
-        <input @bind="address" />
-    </div>
-    <div>
-        <label>Password</label>
-        <input type="password" @bind="password" />
-    </div>
-    <div>
-        <label>Confirm Password</label>
-        <input type="password" @bind="confirmPassword" />
-    </div>
-    <div>
-        <label>Role</label>
-        <select @bind="role">
-            <option value="customer">Customer</option>
-            <option value="cook">Cook</option>
-        </select>
-    </div>
+<div class="loginForm">
+    
+    <label>Name</label>
+    <input @bind="name" />
 
-    <button @onclick="OnRegisterClicked">Register</button>
+    <label>Email</label>
+    <input @bind="email" />
+
+    <label>Phone</label>
+    <input @bind="phone" />
+
+    <label>Address</label>
+    <input @bind="address" />
+
+    <label>Password</label>
+    <input type="password" @bind="password" />
+
+    <label>Confirm Password</label>
+    <input type="password" @bind="confirmPassword" />
+
+    <label>Role</label>
+    <select @bind="role">
+        <option value="customer">Customer</option>
+        <option value="cook">Cook</option>
+    </select>
+    
+
+    <button @onclick="OnRegisterClicked" class="btn-login">Register</button>
 </div>
 
 @code {

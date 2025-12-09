@@ -5,23 +5,24 @@
 @inject AuthService Auth
 @inject NavigationManager Nav
 
-<h3>Login</h3>
+<div class="titleBar">
+    <img class="titleIcon" src="img/loginIcon.svg" alt="login icon">
+    <a>Login</a>
+</div>
 
 @if (!string.IsNullOrEmpty(errorMessage))
 {
     <div class="alert alert-danger">@errorMessage</div>
 }
 
-<form method="post" action="@actionUrl">
-    <div>
+<form method="post" action="@actionUrl" class="loginForm">
         <label>Email</label>
         <input name="Email" />
-    </div>
-    <div>
+    
         <label>Password</label>
         <input name="Password" type="password" />
-    </div>
-    <button type="submit">Login</button>
+   
+    <button type="submit" class="btn-login">Login</button>
 </form>
 
 @code {

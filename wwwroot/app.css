@@ -2,6 +2,27 @@ html, body {
     font-family: 'Montserrat', Helvetica, Arial, sans-serif;
 }
 
+.land {
+    display: flex;
+    margin: auto;
+    margin-top: 2rem;
+    max-width: 60rem;
+}
+
+.landingLogo {
+    margin-top: 1rem;
+    width: 260px;
+}
+
+
+.landingImg {
+    width: 20rem;
+}
+
+.public-wrapper {
+    padding-left: 2rem;
+}
+
 a, .btn-link {
     color: #133956;
 }
@@ -10,12 +31,56 @@ a, .btn-link {
     color: #fff;
     background-color: #133956;
     border-color: #133956;
+    margin-top: 1rem;
+}
+
+.btn-secondary {
+    margin-top: 1rem;
 }
 
 .btn-primary:hover {
     color: #fff;
     background-color: #fec707;
     border-color: #f07f1a ;
+}
+
+
+.loginForm {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color:#fec707;
+    border-radius: 8px;
+    margin: auto;
+    margin-top: 1rem;
+    padding: 2rem;
+    max-width: 300px;
+}
+
+.loginForm input, select {
+    padding: 0.4rem;
+    background: white;
+    border-radius: 8px;
+    border: none;
+    margin: 0.2rem;
+}
+
+.btn-login {
+    color: #fff;
+    background-color: #133956;
+    border: none;
+    border-radius: 8px;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 12rem;
+    margin-top: 1rem;
+}
+
+.btn-login:hover {
+    color: black ;
+    background-color: #f07f1a;
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {

@@ -1,12 +1,12 @@
 @page "/cook/orders"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "cook,admin")]
-@using System
-@using System.Collections.Generic
-@using System.Linq
+@using System.Security.Claims
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
+@inject AuthenticationStateProvider AuthStateProvider
 @inject IOrderService OrderService
 @inject IOrderSettingsService SettingsService
+@inject MealService MealService
 @layout MainLayout
 
 <div class="titleBar">
@@ -16,56 +16,142 @@
 
 <div style="margin:12px 0;">
     <label>Day start:</label> @settings.DayStart
-        <span style="margin-left:12px;"></span>
+    <span style="margin-left:12px;"></span>
     <label>Cut:</label> @settings.NoonSwitch
     <span style="margin-left:12px;"></span>
-        <label>Time Zone:</label> @settings.TimeZoneId
+    <label>Time Zone:</label> @settings.TimeZoneId
     <button class="btn" style="margin-left:12px;" @onclick="LoadByRule">Refresh</button>
+</div>
+
+<!-- Filtros -->
+<div class="d-flex align-items-end mb-3">
+    <div class="me-3">
+        <label class="form-label">Filter by date</label>
+        <InputDate @bind-Value="filterDateLocal" class="form-control" />
+    </div>
+    <div class="me-3">
+        <label class="form-label">Filter by meal</label>
+        <InputSelect @bind-Value="filterMealId" class="form-select" style="min-width:220px">
+            <option value="">All meals</option>
+            @foreach (var m in cookMeals)
+            {
+                <option value="@m.Id">@m.Name</option>
+            }
+        </InputSelect>
+    </div>
+    <div class="me-3">
+        <button class="btn btn-primary" @onclick="LoadByRule">Apply</button>
+        <button class="btn btn-secondary ms-2" @onclick="ClearFilters">Clear</button>
+    </div>
 </div>
 
 @if (loading)
 {
     <p>Loading...</p>
 }
-else if (orders is null || orders.Count == 0)
+else if (ordersGrouped.Count == 0 && ordersRows.Count == 0)
 {
     <p>No data @windowLabel</p>
 }
 else
 {
-    <h4>@windowLabel</h4>
-    <table class="table">
-        <thead>
+    @if (ordersGrouped.Count > 0)
+    {
+        <!-- Tabla agrupada: Date | Meal | Num Dishes | Status (C/I/R/D) -->
+        <h4>@windowLabel (Meal: @ordersGrouped.First().MealName)</h4>
+        <table class="table">
+            <thead>
             <tr>
-                <th>Date</th>
+                <th style="width:160px;">Date</th>
+                <th>Meal</th>
+                <th style="width:120px;">Num Dishes</th>
+                <th>Status (C/I/R/D)</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var g in ordersGrouped)
+            {
+                <tr>
+                    <td>@g.DateLocal.ToString("yyyy-MM-dd")</td>
+                    <td>@g.MealName</td>
+                    <td>@g.Total</td>
+                    <td>
+                        <span class="badge bg-secondary me-1">C:@g.Canceled</span>
+                        <span class="badge bg-info me-1">I:@g.InProcess</span>
+                        <span class="badge bg-warning text-dark me-1">R:@g.Ready</span>
+                        <span class="badge bg-success">D:@g.Delivered</span>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <!-- Tabla detalle: Date | Customer | Meal | Status -->
+        <h4>@windowLabel</h4>
+        <table class="table">
+            <thead>
+            <tr>
+                <th style="width:160px;">Date</th>
                 <th>Customer</th>
                 <th>Meal</th>
-                <th>Cook</th>
+                <th style="width:220px;">Status</th>
             </tr>
-        </thead>
-        <tbody>
-        @foreach (var o in orders)
-        {
-            <tr>
-                <td>@o.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
-                <td>@o.CustomerId</td>
-                <td>@o.MealId</td>
-                <td>@o.CookId</td>
-            </tr>
-        }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+            @foreach (var r in ordersRows)
+            {
+                var localDate = TimeZoneInfo.ConvertTimeFromUtc(
+                    r.DeliveryDateUtc,
+                    TimeZoneInfo.FindSystemTimeZoneById(settings.TimeZoneId));
+
+                <tr>
+                    <td>@localDate.ToString("yyyy-MM-dd")</td>
+                    <td>@r.CustomerName</td>
+                    <td>@r.MealName</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <span class="me-2">@r.Status.ToDisplay()</span>
+                            <select class="form-select form-select-sm" style="width:140px;"
+                                    value="@r.Status"
+                                    @onchange="async e => await ChangeStatus(r.Id, e.Value?.ToString())">
+                                <option value="@OrderStatus.Cancelled">Canceled</option>
+                                <option value="@OrderStatus.Pending">In process</option>
+                                <option value="@OrderStatus.Ready">Ready</option>
+                                <option value="@OrderStatus.Delivered">Delivered</option>
+                            </select>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
 }
 
 @code {
-    private List<Order> orders = new();
+    private List<OrderRow> ordersRows = new();
+    private List<OrderGroupRow> ordersGrouped = new();
+    private List<Meal> cookMeals = new();
     private OrderViewSettings settings = new();
+
     private bool loading;
     private string windowLabel = "";
+    private string? CookId;
+
+    // Filtros
+    private DateTime? filterDateLocal;
+    private string? filterMealId;
 
     protected override async Task OnInitializedAsync()
     {
         settings = await SettingsService.GetAsync();
+        await LoadAuthAsync();
+
+        if (!string.IsNullOrWhiteSpace(CookId))
+            cookMeals = await MealService.GetByCookAsync(CookId, onlyActive: true);
+
         await LoadByRule();
     }
 
@@ -74,32 +160,81 @@ else
         loading = true;
         try
         {
-
             var tz = TimeZoneInfo.FindSystemTimeZoneById(settings.TimeZoneId);
             var nowLocal = TimeZoneInfo.ConvertTime(DateTime.UtcNow, tz);
 
-            var dayStart = settings.DayStart;
-            var noon = settings.NoonSwitch;
+            var dayStart = settings.DayStart;    // TimeOnly
+            var noon     = settings.NoonSwitch;  // TimeOnly
 
             DateTime localStart, localEnd;
-            DateOnly today = DateOnly.FromDateTime(nowLocal);
+            DateOnly today     = DateOnly.FromDateTime(nowLocal);
             DateOnly yesterday = today.AddDays(-1);
-            DateOnly tomorrow = today.AddDays(1);
+            DateOnly tomorrow  = today.AddDays(1);
 
-            if (nowLocal.TimeOfDay < noon.ToTimeSpan())
+            // 1) Si hay una fecha seleccionada, usar ese día exacto
+            if (filterDateLocal.HasValue)
             {
-                localStart = yesterday.ToDateTime(dayStart);
-                localEnd = today.ToDateTime(dayStart);
-                windowLabel = $"{yesterday:yyyy-MM-dd} {dayStart} → {today:yyyy-MM-dd} {dayStart}";
+                var d = DateOnly.FromDateTime(filterDateLocal.Value);
+                localStart  = d.ToDateTime(dayStart);
+                localEnd    = d.AddDays(1).ToDateTime(dayStart);
+                windowLabel = $"{d:yyyy-MM-dd} {dayStart} → {d.AddDays(1):yyyy-MM-dd} {dayStart}";
             }
             else
             {
-                localStart = today.ToDateTime(dayStart);
-                localEnd = tomorrow.ToDateTime(dayStart);
-                windowLabel = $"{today:yyyy-MM-dd} {dayStart} → {tomorrow:yyyy-MM-dd} {dayStart}";
+                // 2) Ventana operativa por NoonSwitch
+                if (nowLocal.TimeOfDay < noon.ToTimeSpan())
+                {
+                    localStart  = yesterday.ToDateTime(dayStart);
+                    localEnd    = today.ToDateTime(dayStart);
+                    windowLabel = $"{yesterday:yyyy-MM-dd} {dayStart} → {today:yyyy-MM-dd} {dayStart}";
+                }
+                else
+                {
+                    localStart  = today.ToDateTime(dayStart);
+                    localEnd    = tomorrow.ToDateTime(dayStart);
+                    windowLabel = $"{today:yyyy-MM-dd} {dayStart} → {tomorrow:yyyy-MM-dd} {dayStart}";
+                }
             }
 
-            orders = await OrderService.GetByLocalWindowAsync(localStart, localEnd, settings.TimeZoneId);
+            // 3) Si hay meal seleccionado pero NO fecha, ampliar la ventana a 14 días (±7)
+            if (!string.IsNullOrWhiteSpace(filterMealId) && !filterDateLocal.HasValue)
+            {
+                var baseLocal = nowLocal.Date;
+                var from = DateOnly.FromDateTime(baseLocal).AddDays(-7);
+                var to   = DateOnly.FromDateTime(baseLocal).AddDays(7);
+
+                localStart  = from.ToDateTime(dayStart);
+                localEnd    = to.AddDays(1).ToDateTime(dayStart);
+                windowLabel = $"{from:yyyy-MM-dd} {dayStart} → {to.AddDays(1):yyyy-MM-dd} {dayStart}";
+            }
+
+            ordersRows.Clear();
+            ordersGrouped.Clear();
+
+            if (!string.IsNullOrWhiteSpace(CookId))
+            {
+                if (!string.IsNullOrWhiteSpace(filterMealId))
+                {
+                    // Vista agrupada por fecha para el meal seleccionado
+                    ordersGrouped = await OrderService.GetCookOrdersGroupedAsync(
+                        cookId: CookId!,
+                        mealId: filterMealId!,
+                        fromLocal: localStart,
+                        toLocal: localEnd,
+                        tzId: settings.TimeZoneId
+                    );
+                }
+                else
+                {
+                    // Vista detalle (ya usamos la ventana calculada)
+                    ordersRows = await OrderService.GetCookOrdersExpandedAsync(
+                        cookId: CookId!,
+                        fromLocal: localStart,
+                        toLocal: localEnd,
+                        tzId: settings.TimeZoneId
+                    );
+                }
+            }
         }
         finally
         {
@@ -107,5 +242,36 @@ else
             StateHasChanged();
         }
     }
-}
 
+
+
+    private Task ClearFilters()
+    {
+        filterMealId = null;
+        filterDateLocal = null;
+        return LoadByRule();
+    }
+
+    private async Task ChangeStatus(string orderId, string? newVal)
+    {
+        if (string.IsNullOrWhiteSpace(newVal)) return;
+        if (!Enum.TryParse<OrderStatus>(newVal, out var newStatus)) return;
+
+        await OrderService.UpdateStatusAsync(orderId, newStatus);
+        await LoadByRule();
+    }
+
+    private async Task LoadAuthAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+
+        CookId = GetClaim(user, ClaimTypes.NameIdentifier)
+              ?? GetClaim(user, "sub")
+              ?? GetClaim(user, "oid")
+              ?? GetClaim(user, "id");
+    }
+
+    private static string? GetClaim(ClaimsPrincipal user, string type)
+        => user?.Claims?.FirstOrDefault(c => c.Type == type)?.Value;
+}

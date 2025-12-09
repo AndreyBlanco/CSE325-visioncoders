@@ -1,5 +1,6 @@
 using CSE325_visioncoders.Models;
 using MongoDB.Driver;
+using MongoDB.Bson;
 using TimeZoneConverter;
 using System.Linq;
 
@@ -11,6 +12,7 @@ namespace CSE325_visioncoders.Services
         private readonly IMongoCollection<MenuDay> _menuDays;
         private readonly IMongoCollection<Meal> _meals;
         private readonly IMongoCollection<MealReview> _reviews;
+        private readonly IMongoCollection<BsonDocument> _users;
 
         public class DishInfo
         {
@@ -32,14 +34,13 @@ namespace CSE325_visioncoders.Services
             var cs = configuration.GetConnectionString("MongoDb");
             var client = new MongoClient(cs);
             var db = client.GetDatabase("lunchmate");
-
+            _users = db.GetCollection<BsonDocument>("users");
             _orders = db.GetCollection<Order>("orders");
             _menuDays = db.GetCollection<MenuDay>("menu_days");
             _meals = db.GetCollection<Meal>("meals");
             _reviews = db.GetCollection<MealReview>("reviews");
         }
 
-        // Obtiene mis órdenes en un rango (opcional filtro por cook)
         public async Task<List<Order>> GetMyOrdersRangeAsync(string customerId, DateTime fromUtc, DateTime toUtc, string? cookId = null)
         {
             var filter = Builders<Order>.Filter.Eq(o => o.CustomerId, customerId) &
@@ -52,7 +53,6 @@ namespace CSE325_visioncoders.Services
             return await _orders.Find(filter).SortBy(o => o.DeliveryDateUtc).ToListAsync();
         }
 
-        // Crea o actualiza una orden (misma llave CustomerId+CookId+DeliveryDateUtc). Permite editar antes del cutoff.
         public async Task<(bool ok, string message, Order? order)> CreateOrUpdateOrderAsync(
             string customerId,
             string cookId,
@@ -128,7 +128,6 @@ namespace CSE325_visioncoders.Services
             }
         }
 
-        // Cancelar orden (por llave lógica). Solo antes del cutoff.
         public async Task<(bool ok, string message)> CancelOrderAsync(
             string customerId,
             string cookId,
@@ -204,6 +203,23 @@ namespace CSE325_visioncoders.Services
             var mealsList = await _meals.Find(m => mealIds.Contains(m.Id!)).ToListAsync();
             var mealById = mealsList.ToDictionary(m => m.Id!, m => m);
 
+            var cookIdsInMeals = mealsList.Select(m => m.CookId).Where(IsValidObjectId).Distinct().ToList();
+            var cookNamesById = new Dictionary<string, string>(StringComparer.Ordinal);
+            if (cookIdsInMeals.Count > 0)
+            {
+                var cookObjIds = cookIdsInMeals.Select(ObjectId.Parse).ToList();
+                var projUsers = Builders<BsonDocument>.Projection.Include("_id").Include("name");
+                var cooks = await _users.Find(Builders<BsonDocument>.Filter.In("_id", cookObjIds))
+                                        .Project(projUsers).ToListAsync();
+
+                foreach (var u in cooks)
+                {
+                    var id = u["_id"].AsObjectId.ToString();
+                    var nm = u.TryGetValue("name", out var n) ? n.AsString : "Cook";
+                    cookNamesById[id] = string.IsNullOrWhiteSpace(nm) ? "Cook" : nm;
+                }
+            }
+
             var ratingsAgg = await _reviews.Aggregate()
                 .Match(r => mealIds.Contains(r.MealId))
                 .Group(
@@ -238,7 +254,7 @@ namespace CSE325_visioncoders.Services
                             Price = mm?.Price ?? 0m,
                             ImageUrl = mm?.ImageUrl,
                             Notes = x.Notes,
-                            CookName = mm?.CookName,
+                            CookName = (mm != null && cookNamesById.TryGetValue(mm.CookId, out var cn)) ? cn : (mm?.CookName),
                             AverageRating = rv.avg,
                             TotalReviews = rv.cnt
                         };
@@ -257,6 +273,8 @@ namespace CSE325_visioncoders.Services
         }
 
         // Helpers
+        private static bool IsValidObjectId(string? id)
+            => !string.IsNullOrWhiteSpace(id) && ObjectId.TryParse(id, out _);
 
         public static bool CanCancel(Order o) => DateTime.UtcNow <= o.CancelUntilUtc;
 

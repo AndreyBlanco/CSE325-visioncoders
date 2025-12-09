@@ -7,12 +7,14 @@ namespace CSE325_visioncoders.Services
     public class MealService
     {
         private readonly IMongoCollection<Meal> _meals;
+        private readonly IMongoCollection<BsonDocument> _users;
 
         public MealService(IConfiguration configuration)
         {
             var connectionString = configuration.GetConnectionString("MongoDb");
             var client = new MongoClient(connectionString);
             var database = client.GetDatabase("lunchmate");
+            _users = database.GetCollection<BsonDocument>("users");
             _meals = database.GetCollection<Meal>("meals");
         }
 
@@ -61,23 +63,28 @@ namespace CSE325_visioncoders.Services
 
         public async Task<List<CookOption>> GetActiveCooksAsync()
         {
-            // Solo filtramos IsActive en la consulta; el resto lo depuramos en memoria
-            var docs = await _meals
-                .Find(m => m.IsActive)
-                .Project(m => new { m.CookId, m.CookName })
-                .ToListAsync();
+            var filterActive = Builders<Meal>.Filter.Eq(m => m.IsActive, true);
 
-            var cooks = docs
-                .Where(x => IsValidObjectId(x.CookId))
-                .GroupBy(x => x.CookId!)
-                .Select(g => new CookOption(
-                    g.Key,
-                    g.Select(x => x.CookName)
-                     .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n)) ?? "Cook"))
+            var cookIds = await _meals.Distinct<string>(nameof(Meal.CookId), filterActive).ToListAsync();
+            cookIds = cookIds.Where(IsValidObjectId).Distinct().ToList();
+            if (cookIds.Count == 0) return new List<CookOption>();
+
+            var objIds = cookIds.Select(id => ObjectId.Parse(id)).ToList();
+            var proj = Builders<BsonDocument>.Projection.Include("_id").Include("name");
+            var userDocs = await _users.Find(Builders<BsonDocument>.Filter.In("_id", objIds))
+                                       .Project(proj)
+                                       .ToListAsync();
+
+            var nameById = userDocs.ToDictionary(
+                d => d["_id"].AsObjectId.ToString(),
+                d => d.TryGetValue("name", out var n) ? n.AsString : "Cook",
+                StringComparer.Ordinal
+            );
+
+            return cookIds
+                .Select(id => new CookOption(id, nameById.TryGetValue(id, out var nm) && !string.IsNullOrWhiteSpace(nm) ? nm : "Cook"))
                 .OrderBy(c => c.Name)
                 .ToList();
-
-            return cooks;
         }
 
         public async Task<List<Meal>> GetByCookAsync(string cookId, bool onlyActive = true)

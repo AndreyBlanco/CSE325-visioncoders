@@ -37,6 +37,19 @@ namespace CSE325_visioncoders.Models
     {
         Pending,
         Cancelled,
-        Delivered
+        Delivered,
+        Ready
+    }
+
+    public static class OrderStatusExtensions
+    {
+        public static string ToDisplay(this OrderStatus s) => s switch
+        {
+            OrderStatus.Pending => "In process",
+            OrderStatus.Cancelled => "Canceled",
+            OrderStatus.Ready => "Ready",
+            OrderStatus.Delivered => "Delivered",
+            _ => s.ToString()
+        };
     }
 }

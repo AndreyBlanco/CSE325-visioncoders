@@ -9,15 +9,20 @@
 @using CSE325_visioncoders.Services
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Authorization
+@using CSE325_visioncoders.Components.Shared
 
 @inject InventoryService InventoryService
 @inject AuthService Auth
 
-<div class="titleBar">
+@* <div class="titleBar">
     <img class="titleIcon" src="img/inventoryIcon.svg" alt="inventory icon">
     <a>Inventory</a>
-</div>
+</div> *@
 
+@* Inventory Page for Cooks *@
+<PageHeader Icon="img/inventoryIcon.svg" Title="Inventory" />
+
+@* Display error message if any *@
 @if (!string.IsNullOrEmpty(errorMessage))
 {
     <div class="alert alert-danger">@errorMessage</div>
@@ -29,6 +34,7 @@
 }
 else
 {
+    // Inventory List and Form
     <div class="inventory-page">
         <div class="inventory-header">
             <button class="btn btn-primary" type="button" @onclick="StartAdd">
@@ -42,6 +48,7 @@ else
         }
         else
         {
+            // Inventory Table
             <table class="table table-sm table-striped align-middle">
                 <thead>
                     <tr>
@@ -75,6 +82,7 @@ else
                             <td>@status</td>
                             <td>@item.LastUpdated.ToLocalTime().ToString("g")</td>
                             <td>
+                            @* Action Buttons *@
                                 <div class="btn-group me-2" role="group" aria-label="Quantity controls">
                                     <button class="btn btn-sm btn-outline-secondary"
                                             type="button"
@@ -90,6 +98,7 @@ else
                                     </button>
                                 </div>
 
+                                @* Edit and Delete Buttons *@
                                 <div class="btn-group" role="group" aria-label="Edit and delete">
                                     <button class="btn btn-sm btn-outline-primary"
                                             type="button"
@@ -111,6 +120,7 @@ else
 
         @if (showForm)
         {
+            // Inventory Item Form
             <div class="inventory-form card mt-3 p-3">
                 <h5>@(isEditMode ? "Edit Ingredient" : "Add Ingredient")</h5>
 
@@ -118,11 +128,12 @@ else
                     <DataAnnotationsValidator />
                     <ValidationSummary />
 
+                    @* Form Fields *@
                     <div class="mb-2">
                         <label class="form-label">Name</label>
                         <InputText class="form-control" @bind-Value="formItem.Name" />
                     </div>
-
+                    
                     <div class="mb-2">
                         <label class="form-label">Quantity</label>
                         <InputNumber class="form-control" TValue="decimal" @bind-Value="formItem.Quantity" />

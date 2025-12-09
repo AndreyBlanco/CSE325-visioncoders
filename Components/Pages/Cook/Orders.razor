@@ -9,11 +9,14 @@
 @inject MealService MealService
 @layout MainLayout
 
-<div class="titleBar">
+@* <div class="titleBar">
     <img class="titleIcon" src="img/orderIcon.svg" alt="order icon">
     <a>Orders</a>
-</div>
+</div> *@
 
+<PageHeader Icon="img/orderIcon.svg" Title="Orders" />
+
+@* Settings display *@
 <div style="margin:12px 0;">
     <label>Day start:</label> @settings.DayStart
     <span style="margin-left:12px;"></span>
@@ -157,6 +160,7 @@ else
 
     private async Task LoadByRule()
     {
+        // Load orders based on day start and noon cut settings 
         loading = true;
         try
         {

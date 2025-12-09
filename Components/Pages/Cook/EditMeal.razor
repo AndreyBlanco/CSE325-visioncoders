@@ -7,16 +7,19 @@
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
 @using Microsoft.AspNetCore.Components.Forms
+@using CSE325_visioncoders.Components.Shared
 
 @inject MealService _mealService
 @inject IWebHostEnvironment Env
 @inject NavigationManager Nav
 @layout MainLayout
 
-<div class="titleBar">
+@* <div class="titleBar">
     <img class="titleIcon" src="img/mealIcon.svg" alt="meal icon">
     <a>Edit Meal</a>
-</div>
+</div> *@
+
+<PageHeader Icon="img/mealIcon.svg" Title="Meals" />
 
 @if (!string.IsNullOrEmpty(errorMessage))
 {
@@ -103,8 +106,10 @@ else
     // Max file size for meal images (25 MB)
     private const long MaxImageSize = 25L * 1024 * 1024;
 
+    // Error message for image upload issues
     private string? errorMessage;
 
+    // Load meal data on initialization
     protected override async Task OnInitializedAsync()
     {
         meal = await _mealService.GetByIdAsync(Id);
@@ -113,7 +118,8 @@ else
             Nav.NavigateTo("/cook/meals");
         }
     }
-
+    
+    // Save changes to the meal
     private async Task SaveChanges()
     {
         if (meal is null) return;
@@ -122,6 +128,7 @@ else
         Nav.NavigateTo("/cook/meals");
     }
 
+    // Delete the meal
     private async Task DeleteMeal()
     {
         if (meal?.Id is null) return;
@@ -129,8 +136,10 @@ else
         Nav.NavigateTo("/cook/meals");
     }
 
+    // Navigate back to meals list
     private void GoBack() => Nav.NavigateTo("/cook/meals");
 
+    // Handle image file selection
     private async Task HandleImageSelected(InputFileChangeEventArgs e)
     {
         errorMessage = null;
@@ -166,6 +175,6 @@ else
         await using var fs = File.Create(filePath);
         await stream.CopyToAsync(fs);
 
-        meal.ImageUrl = $"img/meals/{fileName}";
+        meal.ImageUrl = $"img/meals/{fileName}"; // Update meal's image URL
     }
 }

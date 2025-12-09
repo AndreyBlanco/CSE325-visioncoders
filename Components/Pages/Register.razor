@@ -10,6 +10,7 @@
     <a>Register</a>
 </div>
 
+@* // Display message *@
 @if (!string.IsNullOrEmpty(message))
 {
     <div class="alert @messageClass">@message</div>
@@ -57,6 +58,7 @@
     private string message = string.Empty;
     private string messageClass = "alert-danger";
 
+    // Handle registration button click event
     private async Task OnRegisterClicked()
     {
         message = string.Empty;

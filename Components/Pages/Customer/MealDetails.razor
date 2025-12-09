@@ -8,6 +8,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
+@using CSE325_visioncoders.Components.Shared
 
 @inject MealService _mealService
 @inject ReviewService _reviewService
@@ -15,11 +16,13 @@
 @inject NavigationManager Nav
 @layout MainLayout
 
+<PageHeader Icon="img/mealIcon.svg" Title="Meal" />
+
 <CascadingAuthenticationState>
-    <div class="titleBar">
+    @* <div class="titleBar">
         <img class="titleIcon" src="img/mealIcon.svg" alt="meal icon">
         <a>Meal Details</a>
-    </div>
+    </div> *@
 
     @if (meal is null)
     {
@@ -27,21 +30,25 @@
     }
     else
     {
+        // Meal Details Content
         <div class="meal-details-container">
             <div class="meal-details-top">
                 <div class="meal-details-image">
                     <img src="@GetImage(meal.ImageUrl)" alt="@meal.Name" />
                 </div>
 
+                @* Meal Main Info *@
                 <div class="meal-details-main">
                     <h2 class="meal-details-title">@meal.Name</h2>
                     <p class="meal-details-description">@meal.Description</p>
-
+                    
+                    @* // Meal Meta Info *@
                     <div class="meal-details-meta">
-                        <p><span class="label">Price:</span> @meal.Price.ToString("C")</p>
+                        <p><span class="label">Price:</span> @meal.Price.ToString("C", new System.Globalization.CultureInfo("en-US"))</p>
                         <p><span class="label">Cook:</span> @meal.CookName</p>
                     </div>
 
+                    @* Meal Rating Summary *@
                     <div class="meal-rating-summary">
                         <strong>Rating:</strong>
                         <span class="stars">@RenderStars(AverageRatingRounded)</span>
@@ -51,11 +58,13 @@
                 </div>
             </div>
 
+            @* Ingredients, Review Form, and Reviews List *@
             <div class="meal-details-section">
                 <h4>Ingredients</h4>
                 <p>@meal.Ingredients</p>
             </div>
 
+            @* User Review Form *@
             <div class="meal-details-section">
                 <h4>Your review</h4>
 
@@ -67,7 +76,7 @@
                 {
                     <EditForm Model="@ReviewVm" OnValidSubmit="SubmitReviewAsync">
                         <DataAnnotationsValidator />
-
+                        @* // Form fields *@
                         <div class="row g-2 align-items-center">
                             <div class="col-auto">
                                 <label class="col-form-label">Rating</label>
@@ -85,13 +94,13 @@
                             </div>
                             <ValidationMessage For="() => ReviewVm.Rating" />
                         </div>
-
+                        @* // Comment box *@
                         <div class="mt-2">
                             <label class="form-label">Comment</label>
                             <InputTextArea class="form-control" @bind-Value="ReviewVm.Comment" rows="3" maxlength="1000" />
                             <ValidationMessage For="() => ReviewVm.Comment" />
                         </div>
-
+                        @* // Submit button *@
                         <div class="mt-2">
                             <button class="btn btn-primary" type="submit" disabled="@isSubmitting">
                                 @(MyReviewExists ? "Update review" : "Submit review")
@@ -100,7 +109,7 @@
                     </EditForm>
                 }
             </div>
-
+            @* Reviews List *@
             <div class="meal-details-section">
                 <h4>Reviews (@TotalReviews)</h4>
                 @if (reviews.Count == 0)
@@ -145,17 +154,18 @@
     [Parameter] public string Id { get; set; } = default!;
     private Meal? meal;
 
+    // Reviews data
     private List<MealReview> reviews = new();
     private double AverageRating = 0;
     private int AverageRatingRounded = 0;
     private int TotalReviews => reviews.Count;
 
-    // Estado del usuario/logueo
+    // Authentication state
     private bool IsLogged = false;
     private string? CurrentUserId;
     private string CurrentUserName = "You";
 
-    // Formulario del usuario
+    // Review form state
     private ReviewFormModel ReviewVm = new();
     private bool MyReviewExists = false;
     private bool isSubmitting = false;
@@ -173,7 +183,7 @@
 
         await LoadReviewsAsync();
     }
-
+    // Load authentication state and current user info
     private async Task LoadAuthAsync()
     {
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -195,13 +205,15 @@
         }
     }
 
-    private static string? GetClaim(ClaimsPrincipal user, string type)
+    // Helper to get claim value safely
+    private static string? GetClaim(ClaimsPrincipal? user, string type)
     => user?.Claims?.FirstOrDefault(c => c.Type == type)?.Value;
 
+    // Load reviews for the meal and calculate average rating
     private async Task LoadReviewsAsync()
     {
         reviews = await _reviewService.GetByMealAsync(Id);
-
+        // Calculate average rating
         if (reviews.Count > 0)
         {
             AverageRating = reviews.Average(r => r.Rating);
@@ -212,7 +224,7 @@
             AverageRating = 0;
             AverageRatingRounded = 0;
         }
-
+        // Check if current user has a review
         if (IsLogged && !string.IsNullOrWhiteSpace(CurrentUserId))
         {
             var mine = reviews.FirstOrDefault(r => r.UserId == CurrentUserId);
@@ -232,6 +244,7 @@
         StateHasChanged();
     }
 
+    // Submit or update the user's review
     private async Task SubmitReviewAsync()
     {
         if (!IsLogged || string.IsNullOrWhiteSpace(CurrentUserId))
@@ -262,11 +275,14 @@
         }
     }
 
+    // Navigate back to meals list
     private void GoBack() => Nav.NavigateTo("/customer/meals");
 
+    // Helper to get image URL or placeholder
     private string GetImage(string? url)
     => string.IsNullOrWhiteSpace(url) ? "img/placeholder-meal.png" : url;
 
+    // Render star rating as string
     private string RenderStars(int rating)
     {
         var r = Math.Clamp(rating, 0, 5);

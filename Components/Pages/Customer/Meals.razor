@@ -3,14 +3,17 @@
 @rendermode InteractiveServer
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
+@using CSE325_visioncoders.Components.Shared
 @inject MealService _mealService
 @inject NavigationManager Nav
 @layout MainLayout
 
-<div class="titleBar">
+@* <div class="titleBar">
     <img class="titleIcon" src="img/mealIcon.svg" alt="meal icon">
     <a>Meals</a>
-</div>
+</div> *@
+
+<PageHeader Icon="img/mealIcon.svg" Title="Meal" />
 
 <!-- Filtros -->
 <div class="filters-bar">
@@ -41,6 +44,7 @@
     </div>
 </div>
 
+<!-- Meals Grid -->
 @if (isLoading)
 {
     <div class="loading">Loading meals…</div>
@@ -79,6 +83,7 @@ else
     private string searchText = "";
     private bool isLoading = true;
 
+    // Load cooks and meals on initialization
     protected override async Task OnInitializedAsync()
     {
         await LoadCooksAsync();
@@ -86,11 +91,13 @@ else
         isLoading = false;
     }
 
+    // Load list of cooks for filter dropdown
     private async Task LoadCooksAsync()
     {
         cooks = await _mealService.GetActiveCooksAsync();
     }
 
+    // Load meals based on current filters
     private async Task LoadMealsAsync()
     {
         isLoading = true;
@@ -102,11 +109,13 @@ else
         StateHasChanged();
     }
 
+    // Apply current filters
     private async Task ApplyFilters()
     {
         await LoadMealsAsync();
     }
 
+    // Clear filters and reload meals
     private async Task ClearFilters()
     {
         selectedCookId = "";
@@ -114,6 +123,7 @@ else
         await LoadMealsAsync();
     }
 
+    // Navigate to meal details page
     private void OnMealClick(string id)
     {
         // Ajusta la ruta según tu flujo (detalle o crear orden)
@@ -123,6 +133,7 @@ else
         Nav.NavigateTo($"/customer/meals/details/{id}");
     }
 
+    // Get meal image or placeholder if none
     private string GetImage(string? url)
         => string.IsNullOrWhiteSpace(url) ? "img/placeholder-meal.png" : url;
 }

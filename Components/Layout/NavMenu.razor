@@ -5,7 +5,9 @@
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <img src="img/lm_logo.svg" alt="LunchMate Logo" width="200">
+        <a href="/homepage" class="lm-logo-link">
+            <img src="img/lm_logo.svg" alt="LunchMate Logo" width="200">
+        </a>
     </div>
 </div>
 
@@ -33,39 +35,41 @@
                 <!-- Menú para Cooks/Admin -->
                 <AuthorizeView Roles="cook,admin" Context="cookState">
                     <Authorized>
-                        <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="/cook/dashboard" Match="NavLinkMatch.All">
-                                <span class="bi bi-dashboard-fill-nav-menu" aria-hidden="true"></span> Dashboard
-                            </NavLink>
-                        </div>
 
                         <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="/cook/orders" Match="NavLinkMatch.All">
-                                <span class="bi bi-order-fill-nav-menu" aria-hidden="true"></span> Orders
-                            </NavLink>
-                        </div>
-
-                        <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="/cook/meals" Match="NavLinkMatch.All">
+                            <NavLink class="nav-link" href="/cook/meals" Match="NavLinkMatch.Prefix">
                                 <span class="bi bi-meal-fill-nav-menu" aria-hidden="true"></span> Meals
                             </NavLink>
                         </div>
 
                         <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="/cook/customers">
+                            <NavLink class="nav-link" href="/cook/orders" Match="NavLinkMatch.Prefix">
+                                <span class="bi bi-order-fill-nav-menu" aria-hidden="true"></span> Orders
+                            </NavLink>
+                        </div>
+
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="/cook/customers" Match="NavLinkMatch.Prefix">
                                 <span class="bi bi-customer-nav-menu" aria-hidden="true"></span> Customers
                             </NavLink>
                         </div>
 
                         <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="/cook/calendar">
+                            <NavLink class="nav-link" href="/cook/calendar" Match="NavLinkMatch.Prefix">
                                 <span class="bi bi-calendar-nav-menu" aria-hidden="true"></span> Calendar
                             </NavLink>
                         </div>
 
                         <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="/cook/inventory">
+                            <NavLink class="nav-link" href="/cook/inventory" Match="NavLinkMatch.Prefix">
                                 <span class="bi bi-inventory-nav-menu" aria-hidden="true"></span> Inventory
+                            </NavLink>
+                        </div>
+
+                        <!-- Cook/Admin profile uses /cook/profile -->
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="/cook/profile" Match="NavLinkMatch.Prefix">
+                                <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Profile
                             </NavLink>
                         </div>
 
@@ -79,26 +83,28 @@
                     </Authorized>
                 </AuthorizeView>
 
-                <!-- Menú para Customers -->
+                <!-- Menu for Customers -->
                 <AuthorizeView Roles="customer" Context="custState">
                     <Authorized>
                         <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="/customer/dashboard" Match="NavLinkMatch.All">
-                                <span class="bi bi-dashboard-fill-nav-menu" aria-hidden="true"></span> Dashboard
-                            </NavLink>
-                        </div>
-                        <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="/customer/meals">
+                            <NavLink class="nav-link" href="/customer/meals" Match="NavLinkMatch.Prefix">
                                 <span class="bi bi-meal-fill-nav-menu"></span> Meals
                             </NavLink>
                         </div>
 
                         <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="/customer/orders">
+                            <NavLink class="nav-link" href="/customer/orders" Match="NavLinkMatch.Prefix">
                                 <span class="bi bi-order-fill-nav-menu"></span> My Orders
                             </NavLink>
                         </div>
 
+                        <!-- Customer profile uses /customer/profile -->
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="/customer/profile" Match="NavLinkMatch.Prefix">
+                                <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Profile
+                            </NavLink>
+                        </div>
+                        
                         <div class="nav-item px-3">
                             <form method="post" action="@logoutAction">
                                 <button class="nav-link btn btn-link text-start text-light" type="submit">
@@ -108,7 +114,7 @@
                         </div>
                     </Authorized>
                 </AuthorizeView>
-            </Authorized>
+            </Authorized>   
         </AuthorizeView>
     </nav>
 </div>

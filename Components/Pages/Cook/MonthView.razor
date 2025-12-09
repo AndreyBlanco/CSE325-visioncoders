@@ -3,8 +3,11 @@
 
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
+@using CSE325_visioncoders.Components.Shared
 @inject CalendarService CalendarService
 @inject NavigationManager Nav
+
+<PageHeader Icon="img/calendarIcon.svg" Title="Calendar" />
 
 <!-- HEADER -->
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -97,11 +100,14 @@
 
 @code {
 
+    // Current month being viewed
     private DateTime currentMonth = DateTime.Today;
 
+    // Weeks in the month grid
     private List<List<DateTime>> weeks = new();
     private Dictionary<DateTime, MenuDay> menuByDate = new();
 
+    // Day names for header
     private string[] dayNames = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
 
     protected override void OnInitialized()

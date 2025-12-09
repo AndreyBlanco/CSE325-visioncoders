@@ -235,9 +235,7 @@ app.MapPost("/auth/login-form", async (HttpContext http,
     await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
 
     // destino por rol
-    string redirect = user.Role.Equals("cook", StringComparison.OrdinalIgnoreCase)
-        ? "/cook/dashboard"
-        : "/customer/dashboard";
+    string redirect = "/homepage";
 
     // returnUrl relativo tiene prioridad
     if (!string.IsNullOrWhiteSpace(returnUrl) && Uri.IsWellFormedUriString(returnUrl, UriKind.Relative))
@@ -280,5 +278,76 @@ app.MapGet("/auth/me", (HttpContext http) =>
         role
     });
 });
+
+// GET: /api/profile/me
+app.MapGet("/api/profile/me", async (HttpContext http, UserService userService) =>
+{
+    var userId = http.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (string.IsNullOrWhiteSpace(userId))
+        return Results.Unauthorized();
+
+    var user = await userService.GetByIdAsync(userId);
+    if (user is null)
+        return Results.NotFound();
+
+    var dto = new UserProfileDto
+    {
+        Id = user.Id ?? string.Empty,
+        Name = user.Name,
+        Email = user.Email,
+        Role = user.Role,
+        Phone = user.Phone,
+        Address = user.Address
+    };
+
+    return Results.Ok(dto);
+})
+.RequireAuthorization();
+
+// PUT: /api/profile/me  (update name/phone/address)
+app.MapPut("/api/profile/me", async (HttpContext http, UpdateProfileRequest req, UserService userService) =>
+{
+    var userId = http.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (string.IsNullOrWhiteSpace(userId))
+        return Results.Unauthorized();
+
+    // Basic validation
+    if (string.IsNullOrWhiteSpace(req.Name))
+        return Results.BadRequest("Name is required.");
+
+    await userService.UpdateProfileAsync(
+        id: userId,
+        name: req.Name,
+        phone: string.IsNullOrWhiteSpace(req.Phone) ? null : req.Phone,
+        address: string.IsNullOrWhiteSpace(req.Address) ? null : req.Address
+    );
+
+    return Results.Ok(new { message = "Profile updated successfully." });
+})
+.RequireAuthorization();
+
+// POST: /api/profile/change-password
+app.MapPost("/api/profile/change-password", async (HttpContext http, ChangePasswordRequest req, UserService userService) =>
+{
+    var userId = http.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (string.IsNullOrWhiteSpace(userId))
+        return Results.Unauthorized();
+
+    var user = await userService.GetByIdAsync(userId);
+    if (user is null)
+        return Results.NotFound("User not found.");
+
+    if (string.IsNullOrWhiteSpace(req.CurrentPassword) || string.IsNullOrWhiteSpace(req.NewPassword))
+        return Results.BadRequest("Both current and new password are required.");
+
+    if (!PasswordHasher.Verify(req.CurrentPassword, user.PasswordHash))
+        return Results.BadRequest("Current password is incorrect.");
+
+    var newHash = PasswordHasher.Hash(req.NewPassword);
+    await userService.UpdatePasswordAsync(userId, newHash);
+
+    return Results.Ok(new { message = "Password changed successfully." });
+})
+.RequireAuthorization();
 
 app.Run();

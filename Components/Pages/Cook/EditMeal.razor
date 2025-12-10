@@ -10,7 +10,7 @@
 @using CSE325_visioncoders.Components.Shared
 
 @inject MealService _mealService
-@inject IWebHostEnvironment Env
+@inject ICloudinaryService Cloudinary
 @inject NavigationManager Nav
 @layout MainLayout
 
@@ -165,16 +165,15 @@ else
             return;
         }
 
-        var uploadsFolder = Path.Combine(Env.WebRootPath, "img", "meals");
-        Directory.CreateDirectory(uploadsFolder);
-
-        var fileName = $"{Guid.NewGuid()}{ext}";
-        var filePath = Path.Combine(uploadsFolder, fileName);
-
         await using var stream = file.OpenReadStream(MaxImageSize);
-        await using var fs = File.Create(filePath);
-        await stream.CopyToAsync(fs);
-
-        meal.ImageUrl = $"img/meals/{fileName}"; // Update meal's image URL
+        try
+        {
+            var publicUrl = await Cloudinary.UploadAsync(stream, file.Name);
+            meal.ImageUrl = publicUrl;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Image upload failed: {ex.Message}";
+        }
     }
 }

@@ -1,3 +1,9 @@
+/*
+  File: AuthService.cs
+  Description: Client-side authentication helper for managing current user state, profile retrieval
+               and updates, password change, logout navigation, and registration workflow.
+*/
+
 using System.Security.Claims;
 using CSE325_visioncoders.Models;
 using Microsoft.AspNetCore.Components;
@@ -5,13 +11,17 @@ using Microsoft.AspNetCore.Components.Authorization;
 
 namespace CSE325_visioncoders.Services
 {
+    /// <summary>
+    /// Class: AuthService
+    /// Purpose: Manages authentication state, profile access, password changes, logout, and registration.
+    /// </summary>
     public class AuthService
     {
         private readonly AuthenticationStateProvider _authStateProvider;
         private readonly UserService _users;
         private readonly NavigationManager _nav;
 
-        // Estado actual
+        // State
         public LoginResponse? CurrentUser { get; private set; }
         public bool IsLoggedIn => CurrentUser != null;
         public string? Role => CurrentUser?.Role;
@@ -19,6 +29,10 @@ namespace CSE325_visioncoders.Services
 
         public event Action? OnChange;
 
+        /// <summary>
+        /// Constructor: AuthService
+        /// Purpose: Initializes dependencies for auth state, user data access, and navigation.
+        /// </summary>
         public AuthService(AuthenticationStateProvider authStateProvider, UserService users, NavigationManager nav)
         {
             _authStateProvider = authStateProvider;
@@ -26,7 +40,12 @@ namespace CSE325_visioncoders.Services
             _nav = nav;
         }
 
-        // Hidrata a partir de los claims (sin HTTP)
+        // Hydration
+
+        /// <summary>
+        /// Function: HydrateAsync
+        /// Purpose: Populates CurrentUser from authentication claims without making HTTP calls.
+        /// </summary>
         public async Task HydrateAsync()
         {
             var state = await _authStateProvider.GetAuthenticationStateAsync();
@@ -49,7 +68,12 @@ namespace CSE325_visioncoders.Services
             OnChange?.Invoke();
         }
 
-        // Perfil (acceso directo a la capa de datos, sin HTTP)
+        // Profile
+
+        /// <summary>
+        /// Function: GetProfileAsync
+        /// Purpose: Retrieves the current user's profile directly from the data layer.
+        /// </summary>
         public async Task<UserProfileDto?> GetProfileAsync()
         {
             var me = CurrentUser;
@@ -69,6 +93,10 @@ namespace CSE325_visioncoders.Services
             };
         }
 
+        /// <summary>
+        /// Function: UpdateProfileAsync
+        /// Purpose: Updates the current user's profile fields after basic validation.
+        /// </summary>
         public async Task<(bool ok, string? error)> UpdateProfileAsync(UpdateProfileRequest req)
         {
             var me = CurrentUser;
@@ -84,6 +112,12 @@ namespace CSE325_visioncoders.Services
             return (true, null);
         }
 
+        // Password
+
+        /// <summary>
+        /// Function: ChangePasswordAsync
+        /// Purpose: Validates current password and updates to a new password for the current user.
+        /// </summary>
         public async Task<(bool ok, string? error)> ChangePasswordAsync(ChangePasswordRequest req)
         {
             var me = CurrentUser;
@@ -104,26 +138,36 @@ namespace CSE325_visioncoders.Services
             return (true, null);
         }
 
+        // Session
+
+        /// <summary>
+        /// Function: Logout
+        /// Purpose: Clears the current session state and navigates to the login page.
+        /// </summary>
         public void Logout()
         {
-
             CurrentUser = null;
             OnChange?.Invoke();
             _nav.NavigateTo("/login", forceLoad: true);
         }
 
+        // Registration
+
+        /// <summary>
+        /// Function: RegisterAsync
+        /// Purpose: Creates a new user account after basic validation and duplicate check.
+        /// </summary>
         public async Task<bool> RegisterAsync(RegisterRequest request)
         {
-
             if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password) || string.IsNullOrWhiteSpace(request.Name))
                 return false;
 
-            // ¿Ya existe?
+            // Already exists?
             var existing = await _users.GetByEmailAsync(request.Email);
             if (existing != null)
                 return false;
 
-            // Crear el usuario
+            // Create user
             var user = new User
             {
                 Name = request.Name,

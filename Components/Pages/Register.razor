@@ -1,3 +1,8 @@
+@*
+  File: Register.razor
+  Description: Registration page for creating a new account with client-side validation and status messaging.
+*@
+
 @page "/register"
 @attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 @using CSE325_visioncoders.Services
@@ -5,19 +10,20 @@
 @inject AuthService Auth
 @inject NavigationManager Nav
 
+<!-- Title bar -->
 <div class="titleBar">
-    <img class="titleIcon" src="img/registerIcon.svg" alt="register icon">
+    <img class="titleIcon" src="img/registerIcon.svg" alt="Register icon">
     <a>Register</a>
 </div>
 
-@* // Display message *@
+<!-- Message alert -->
 @if (!string.IsNullOrEmpty(message))
 {
     <div class="alert @messageClass">@message</div>
 }
 
+<!-- Registration form -->
 <div class="loginForm">
-    
     <label>Name</label>
     <input @bind="name" />
 
@@ -41,12 +47,12 @@
         <option value="customer">Customer</option>
         <option value="cook">Cook</option>
     </select>
-    
 
     <button @onclick="OnRegisterClicked" class="btn-login">Register</button>
 </div>
 
 @code {
+    // State
     private string name = string.Empty;
     private string email = string.Empty;
     private string phone = string.Empty;
@@ -55,10 +61,14 @@
     private string confirmPassword = string.Empty;
     private string role = "customer";
 
+    // UI status
     private string message = string.Empty;
     private string messageClass = "alert-danger";
 
-    // Handle registration button click event
+    /// <summary>
+    /// Function: OnRegisterClicked
+    /// Purpose: Handles registration button click and displays status messages.
+    /// </summary>
     private async Task OnRegisterClicked()
     {
         message = string.Empty;

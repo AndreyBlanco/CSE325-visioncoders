@@ -1,22 +1,35 @@
+@*
+  File: Landing.razor
+  Description: Public landing page with quick links and post-render redirect based on user role.
+*@
+
 @page "/landing"
 @attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 @layout CSE325_visioncoders.Components.Layout.PublicLayout
 @using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Nav
 
+<!-- Hero -->
 <h1>Welcome to LunchMate</h1>
 <p>Your meals organizer</p>
 
+<!-- CTAs -->
 <div style="margin-top:1rem;">
   <a class="btn-login" href="/login">Login</a>
   <a class="btn-login" href="/register">Register</a>
 </div>
 
 @code {
+    // Auth state (cascaded from layout)
     [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
 
-    private const string CustomerHome = "/customer/profile"; 
+    // Constants
+    private const string CustomerHome = "/customer/profile";
 
+    /// <summary>
+    /// Method: OnAfterRenderAsync
+    /// Purpose: Redirects authenticated users to role-specific home pages after initial render.
+    /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;

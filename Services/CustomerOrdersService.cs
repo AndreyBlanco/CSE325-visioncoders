@@ -1,3 +1,10 @@
+/*
+  File: CustomerOrdersService.cs
+  Description: MongoDB-backed service for customer order flows, including:
+               range retrieval, create/update, cancellation, weekly menu with user selection,
+               rating aggregation, and time zone utilities.
+*/
+
 using CSE325_visioncoders.Models;
 using MongoDB.Driver;
 using MongoDB.Bson;
@@ -6,6 +13,10 @@ using System.Linq;
 
 namespace CSE325_visioncoders.Services
 {
+    /// <summary>
+    /// Class: CustomerOrdersService
+    /// Purpose: Manages customer order lifecycle and weekly menu selections, including validation and aggregation.
+    /// </summary>
     public class CustomerOrdersService
     {
         private readonly IMongoCollection<Order> _orders;
@@ -14,6 +25,12 @@ namespace CSE325_visioncoders.Services
         private readonly IMongoCollection<MealReview> _reviews;
         private readonly IMongoCollection<BsonDocument> _users;
 
+        // DTOs
+
+        /// <summary>
+        /// Class: DishInfo
+        /// Purpose: Represents a menu dish hydrated with details, pricing, and ratings.
+        /// </summary>
         public class DishInfo
         {
             public int Index { get; set; }
@@ -24,11 +41,17 @@ namespace CSE325_visioncoders.Services
             public decimal Price { get; set; }
             public string? ImageUrl { get; set; }
             public string? Notes { get; set; }
-            public string? CookName { get; set; } 
+            public string? CookName { get; set; }
             public double AverageRating { get; set; }
             public int TotalReviews { get; set; }
         }
 
+        // Constructor and initialization
+
+        /// <summary>
+        /// Constructor: CustomerOrdersService
+        /// Purpose: Initializes MongoDB collections for users, orders, menu days, meals, and reviews.
+        /// </summary>
         public CustomerOrdersService(IConfiguration configuration)
         {
             var cs = configuration.GetConnectionString("MongoDb");
@@ -41,6 +64,12 @@ namespace CSE325_visioncoders.Services
             _reviews = db.GetCollection<MealReview>("reviews");
         }
 
+        // Retrieval
+
+        /// <summary>
+        /// Function: GetMyOrdersRangeAsync
+        /// Purpose: Retrieves customer orders in a UTC date range with optional cook filter.
+        /// </summary>
         public async Task<List<Order>> GetMyOrdersRangeAsync(string customerId, DateTime fromUtc, DateTime toUtc, string? cookId = null)
         {
             var filter = Builders<Order>.Filter.Eq(o => o.CustomerId, customerId) &
@@ -53,14 +82,20 @@ namespace CSE325_visioncoders.Services
             return await _orders.Find(filter).SortBy(o => o.DeliveryDateUtc).ToListAsync();
         }
 
+        // Mutations
+
+        /// <summary>
+        /// Function: CreateOrUpdateOrderAsync
+        /// Purpose: Creates or updates an order for a given customer, cook, meal, and local delivery date.
+        /// </summary>
         public async Task<(bool ok, string message, Order? order)> CreateOrUpdateOrderAsync(
             string customerId,
             string cookId,
             string mealId,
-            DateTime deliveryDateLocal, // Kind Unspecified (fecha del menú, medianoche local)
+            DateTime deliveryDateLocal,
             string tzId)
         {
-            // 1) Validar menú del día
+            // Validate that a menu exists for the cook and date
             var dayKey = NormalizeLocalDate(deliveryDateLocal);
             var mdFilter = Builders<MenuDay>.Filter.Eq(m => m.CookId, cookId) &
                            Builders<MenuDay>.Filter.Eq(m => m.Date, dayKey);
@@ -68,23 +103,23 @@ namespace CSE325_visioncoders.Services
             if (menuDay == null)
                 return (false, "No menu found for the selected day.", null);
 
-            // 2) Validar que la opción exista en el menú
+            // Validate that the selected meal is present in the menu
             var dish = menuDay.Dishes.FirstOrDefault(d => d.MealId == mealId);
             if (dish == null)
                 return (false, "Selected meal is not part of this day's menu.", null);
 
-            // 3) Resolver TZ y calcular cutoff
+            // Resolve time zone and compute cutoff
             var tz = ResolveTimeZone(tzId);
             var cancelUntilUtc = ComputeCancelUntilUtc(dayKey, tz);
 
-            // 4) DeliveryDateUtc (llave de día en UTC; convención de este proyecto: 00:00 UTC)
+            // Compute delivery date UTC key (00:00 UTC per local day)
             var deliveryDateUtc = UtcKey(dayKey);
 
-            // 5) Meal para congelar precio
+            // Resolve meal to freeze price at order time
             var meal = await _meals.Find(m => m.Id == mealId).FirstOrDefaultAsync();
             if (meal == null) return (false, "Meal not found.", null);
 
-            // 6) Upsert por llave lógica
+            // Upsert by logical key: customer + cook + day
             var keyFilter = Builders<Order>.Filter.Eq(o => o.CustomerId, customerId) &
                             Builders<Order>.Filter.Eq(o => o.CookId, cookId) &
                             Builders<Order>.Filter.Eq(o => o.DeliveryDateUtc, deliveryDateUtc);
@@ -98,7 +133,7 @@ namespace CSE325_visioncoders.Services
 
                 var update = Builders<Order>.Update
                     .Set(o => o.MealId, mealId)
-                    .Set(o => o.PriceAtOrder, meal.Price)   // actualizar precio al editar
+                    .Set(o => o.PriceAtOrder, meal.Price)
                     .Set(o => o.TimeZone, tzId)
                     .Set(o => o.CancelUntilUtc, cancelUntilUtc)
                     .Set(o => o.UpdatedAt, DateTime.UtcNow);
@@ -128,10 +163,14 @@ namespace CSE325_visioncoders.Services
             }
         }
 
+        /// <summary>
+        /// Function: CancelOrderAsync
+        /// Purpose: Cancels an order by logical key if cutoff has not passed.
+        /// </summary>
         public async Task<(bool ok, string message)> CancelOrderAsync(
             string customerId,
             string cookId,
-            DateTime deliveryDateLocal) // Kind Unspecified
+            DateTime deliveryDateLocal)
         {
             var dayKey = NormalizeLocalDate(deliveryDateLocal);
             var deliveryDateUtc = UtcKey(dayKey);
@@ -154,23 +193,29 @@ namespace CSE325_visioncoders.Services
             return (true, "Order cancelled.");
         }
 
-        // DTO para pintar en la UI la semana con selección del usuario
+        // Weekly view with user selection
+
+        /// <summary>
+        /// Class: MenuDayWithSelection
+        /// Purpose: Represents a menu day combined with the customer's selection and hydrated dishes.
+        /// </summary>
         public class MenuDayWithSelection
         {
             public MenuDay Day { get; set; } = default!;
             public Order? MyOrder { get; set; }
             public string? SelectedMealId => MyOrder?.MealId;
             public bool CanCancel => MyOrder != null && CustomerOrdersService.CanCancel(MyOrder);
-
-            // NUEVO: platos hidratados desde la colección meals
             public List<DishInfo> DishesHydrated { get; set; } = new();
         }
 
-        // Retorna la semana de menús de un cook y las órdenes del customer para esa semana
+        /// <summary>
+        /// Function: GetWeekWithSelectionsAsync
+        /// Purpose: Retrieves a week of menu days for a cook and the customer's orders for that week, hydrated with meal data and ratings.
+        /// </summary>
         public async Task<List<MenuDayWithSelection>> GetWeekWithSelectionsAsync(
             string customerId,
             string cookId,
-            DateTime weekStartLocal) // Kind Unspecified (lunes local)
+            DateTime weekStartLocal)
         {
             var startLocal = NormalizeLocalDate(weekStartLocal);
             var endLocal = startLocal.AddDays(7);
@@ -181,7 +226,7 @@ namespace CSE325_visioncoders.Services
                                       .SortBy(m => m.Date)
                                       .ToListAsync();
 
-            // Rango para DeliveryDateUtc usando la convención (00:00 UTC por día local)
+            // DeliveryDateUtc range using the UTC midnight convention
             var startUtcKey = UtcKey(startLocal);
             var endUtcKey = UtcKey(endLocal);
 
@@ -273,17 +318,38 @@ namespace CSE325_visioncoders.Services
         }
 
         // Helpers
+
+        /// <summary>
+        /// Function: IsValidObjectId
+        /// Purpose: Validates an ObjectId string.
+        /// </summary>
         private static bool IsValidObjectId(string? id)
             => !string.IsNullOrWhiteSpace(id) && ObjectId.TryParse(id, out _);
 
+        /// <summary>
+        /// Function: CanCancel
+        /// Purpose: Indicates if the current UTC time is before or equal to the order's cancel-until timestamp.
+        /// </summary>
         public static bool CanCancel(Order o) => DateTime.UtcNow <= o.CancelUntilUtc;
 
+        /// <summary>
+        /// Function: NormalizeLocalDate
+        /// Purpose: Returns the same local date at midnight with Kind set to Unspecified.
+        /// </summary>
         public static DateTime NormalizeLocalDate(DateTime localDate)
             => new DateTime(localDate.Year, localDate.Month, localDate.Day, 0, 0, 0, DateTimeKind.Unspecified);
 
-        public static DateTime UtcKey(DateTime localDate) // convención del proyecto
+        /// <summary>
+        /// Function: UtcKey
+        /// Purpose: Returns the UTC midnight key for the supplied local date.
+        /// </summary>
+        public static DateTime UtcKey(DateTime localDate)
             => new DateTime(localDate.Year, localDate.Month, localDate.Day, 0, 0, 0, DateTimeKind.Utc);
 
+        /// <summary>
+        /// Function: ResolveTimeZone
+        /// Purpose: Resolves a time zone by ID using TZConvert or system fallback.
+        /// </summary>
         private static TimeZoneInfo ResolveTimeZone(string tzId)
         {
             try { return TZConvert.GetTimeZoneInfo(tzId); }
@@ -294,6 +360,10 @@ namespace CSE325_visioncoders.Services
             }
         }
 
+        /// <summary>
+        /// Function: ComputeCancelUntilUtc
+        /// Purpose: Computes the cancel cutoff time in UTC for the given local day at 8:00 AM local.
+        /// </summary>
         private static DateTime ComputeCancelUntilUtc(DateTime dayLocal, TimeZoneInfo tz)
         {
             var d = NormalizeLocalDate(dayLocal);

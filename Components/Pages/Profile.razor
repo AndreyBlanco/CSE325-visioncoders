@@ -15,7 +15,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject UserService UserService
 @inject NavigationManager Nav
-@inject IWebHostEnvironment Env
+@inject ICloudinaryService Cloudinary
 
 @layout MainLayout
 
@@ -351,19 +351,11 @@
         var allowed = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
         if (!allowed.Contains(ext)) return;
 
-        var uploadsFolder = Path.Combine(Env.WebRootPath, "img", "profiles");
-        Directory.CreateDirectory(uploadsFolder);
-
-        var fileName = $"{Guid.NewGuid()}{ext}";
-        var filePath = Path.Combine(uploadsFolder, fileName);
-
         await using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
-        await using var fs = File.Create(filePath);
-        await stream.CopyToAsync(fs);
+        var publicUrl = await Cloudinary.UploadAsync(stream, file.Name);
 
-        var relativeUrl = $"img/profiles/{fileName}";
-        await UserService.UpdateProfileImageAsync(CurrentUser.Id, relativeUrl);
-        CurrentUser.ProfileImageUrl = relativeUrl;
+        await UserService.UpdateProfileImageAsync(CurrentUser.Id, publicUrl);
+        CurrentUser.ProfileImageUrl = publicUrl;
 
         StateHasChanged();
     }

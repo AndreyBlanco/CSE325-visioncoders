@@ -1,13 +1,29 @@
+/*
+  File: MenuDayService.cs
+  Description: MongoDB-backed service for managing cook menu days. Provides weekly retrieval,
+               upsert operations, and a deterministic key helper.
+*/
+
 using CSE325_visioncoders.Models;
 using System.Security.Cryptography;
 using MongoDB.Driver;
 
 namespace CSE325_visioncoders.Services
 {
+    /// <summary>
+    /// Class: MenuDayService
+    /// Purpose: Manages menu day documents for cooks, including weekly retrieval and upsert.
+    /// </summary>
     public class MenuDayService
     {
         private readonly IMongoCollection<MenuDay> _menuDays;
 
+        // Constructor and initialization
+
+        /// <summary>
+        /// Constructor: MenuDayService
+        /// Purpose: Initializes MongoDB collection and ensures unique index for cook and date.
+        /// </summary>
         public MenuDayService(IConfiguration configuration)
         {
             var cs = configuration.GetConnectionString("MongoDb");
@@ -23,9 +39,18 @@ namespace CSE325_visioncoders.Services
                     )
                 );
             }
-            catch {  }
+            catch
+            {
+                // Index may already exist or there may be pre-existing duplicates.
+            }
         }
 
+        // Retrieval
+
+        /// <summary>
+        /// Function: GetWeekByCookAsync
+        /// Purpose: Retrieves a seven-day window of menu days for the specified cook starting at the given local date.
+        /// </summary>
         public async Task<List<MenuDay>> GetWeekByCookAsync(string cookId, DateTime weekStartLocal)
         {
             var start = NormalizeLocalDate(weekStartLocal);
@@ -37,23 +62,23 @@ namespace CSE325_visioncoders.Services
             return days;
         }
 
-        public static DateTime NormalizeLocalDate(DateTime localDate)
-            => new DateTime(localDate.Year, localDate.Month, localDate.Day, 0, 0, 0, DateTimeKind.Unspecified);
+        // Mutations
 
-        // Dentro de la clase MenuDayService
-
+        /// <summary>
+        /// Function: UpsertMenuDayAsync
+        /// Purpose: Creates or updates a menu day for the given cook and date.
+        /// </summary>
         public async Task UpsertMenuDayAsync(MenuDay source, string cookId, string tzId)
         {
             if (string.IsNullOrWhiteSpace(cookId))
                 throw new InvalidOperationException("CookId is required.");
 
-            // Normaliza fecha local a medianoche (Kind Unspecified)
+            // Normalize local date to midnight (Kind Unspecified)
             var dateKey = NormalizeLocalDate(source.Date);
 
-            // Asegura formateo de 3 platos 1..3
+            // Ensure three dishes ordered by index
             source.EnsureThreeDishes();
 
-            // Si quieres persistir solamente Index y MealId, limpias Name/Notes (opcional)
             var dishes = source.Dishes
                 .OrderBy(d => d.Index)
                 .Take(3)
@@ -61,13 +86,12 @@ namespace CSE325_visioncoders.Services
                 {
                     Index = d.Index,
                     MealId = d.MealId,
-                    // Name = "", Notes = "" // si prefieres no guardar estos campos
                     Name = d.Name,
                     Notes = d.Notes
                 })
                 .ToList();
 
-            // Busca si ya existe (clave lógica CookId+Date)
+            // Find existing record by logical key CookId + Date
             var filter = Builders<MenuDay>.Filter.Eq(m => m.CookId, cookId) &
                          Builders<MenuDay>.Filter.Eq(m => m.Date, dateKey);
 
@@ -77,7 +101,7 @@ namespace CSE325_visioncoders.Services
             {
                 var toInsert = new MenuDay
                 {
-                    // _id (int) único por cook+day (evita duplicados)
+                    // Deterministic int key to avoid duplicates per cook and day
                     Id = ComputeMenuDayKey(cookId, dateKey),
 
                     CookId = cookId,
@@ -119,7 +143,19 @@ namespace CSE325_visioncoders.Services
             }
         }
 
-        // Helper: _id determinista (int) por CookId+Date
+        // Helpers
+
+        /// <summary>
+        /// Function: NormalizeLocalDate
+        /// Purpose: Returns the same date with time set to midnight and Kind set to Unspecified.
+        /// </summary>
+        public static DateTime NormalizeLocalDate(DateTime localDate)
+            => new DateTime(localDate.Year, localDate.Month, localDate.Day, 0, 0, 0, DateTimeKind.Unspecified);
+
+        /// <summary>
+        /// Function: ComputeMenuDayKey
+        /// Purpose: Computes a deterministic integer identifier from CookId and Date.
+        /// </summary>
         private static int ComputeMenuDayKey(string cookId, DateTime dateKey)
         {
             var s = $"{cookId}|{dateKey:yyyy-MM-dd}";

@@ -9,12 +9,13 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
-@inject MealService _mealService
-@inject IWebHostEnvironment Env
-@inject NavigationManager Nav
-@inject AuthenticationStateProvider AuthStateProvider
 @layout MainLayout
 @using CSE325_visioncoders.Components.Shared
+
+@inject MealService _mealService
+@inject ICloudinaryService Cloudinary
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageHeader Icon="img/mealIcon.svg" Title="Meals" />
 
@@ -160,6 +161,9 @@ else if (HasMeals && !showForm)
         ?? GetClaim(user, "preferred_username")
         ?? GetClaim(user, "email")
         ?? "Cook";
+
+        currentCookId = CookId;
+        currentCookName = CookDisplayName;
     }
     
 
@@ -238,23 +242,17 @@ else if (HasMeals && !showForm)
     private async Task HandleImageSelected(InputFileChangeEventArgs e)
     {
         errorMessage = null;
-
-        // Get the selected file
         var file = e.File;
-        if (file is null)
-            return;
+        if (file is null) return;
 
         var ext = Path.GetExtension(file.Name).ToLowerInvariant();
         var allowed = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
-
-        // Validate file type
         if (!allowed.Contains(ext))
         {
             errorMessage = "Invalid image type. Please upload a JPG, PNG, GIF, or WEBP file.";
             return;
         }
 
-        // Check size before opening stream
         if (file.Size > MaxImageSize)
         {
             var sizeMb = file.Size / 1024 / 1024;
@@ -263,18 +261,16 @@ else if (HasMeals && !showForm)
             return;
         }
 
-        // Save the file to wwwroot/img/meals and set the ImageUrl  
-        var uploadsFolder = Path.Combine(Env.WebRootPath, "img", "meals");
-        Directory.CreateDirectory(uploadsFolder);
-
-        var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}";
-        var filePath = Path.Combine(uploadsFolder, fileName);
-
         await using var stream = file.OpenReadStream(MaxImageSize);
-        await using var fs = File.Create(filePath);
-        await stream.CopyToAsync(fs);
-
-        newMeal.ImageUrl = $"img/meals/{fileName}";
+        try
+        {
+            var publicUrl = await Cloudinary.UploadAsync(stream, file.Name);
+            newMeal.ImageUrl = publicUrl;
+       }
+        catch (Exception ex)
+        {
+            errorMessage = $"Image upload failed: {ex.Message}";
+        }
     }
 
     // Helper to get image or placeholder

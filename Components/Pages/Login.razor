@@ -1,3 +1,9 @@
+@*
+  File: Login.razor
+  Description: Login page with server-posted form, authenticated redirection,
+               error message mapping, and returnUrl propagation.
+*@
+
 @page "/login"
 @attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 @using CSE325_visioncoders.Services
@@ -7,33 +13,42 @@
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
 
+<!-- Title bar -->
 <div class="titleBar">
-    <img class="titleIcon" src="img/loginIcon.svg" alt="login icon">
+    <img class="titleIcon" src="img/loginIcon.svg" alt="Login icon">
     <a>Login</a>
 </div>
 
+<!-- Error message -->
 @if (!string.IsNullOrEmpty(errorMessage))
 {
     <div class="alert alert-danger">@errorMessage</div>
 }
 
+<!-- Login form -->
 <form method="post" action="@actionUrl" class="loginForm">
-        <label>Email</label>
-        <input name="Email" />
-    
-        <label>Password</label>
-        <input name="Password" type="password" />
-   
+    <label>Email</label>
+    <input name="Email" />
+
+    <label>Password</label>
+    <input name="Password" type="password" />
+
     <button type="submit" class="btn-login">Login</button>
 </form>
 
 @code {
+    // State
     private string actionUrl = "";
     private string? errorMessage;
 
+    /// <summary>
+    /// Method: OnInitializedAsync
+    /// Purpose: Redirects authenticated users, maps query errors to user-friendly messages,
+    ///          and builds the form action URL with optional returnUrl.
+    /// </summary>
     protected override async Task OnInitializedAsync()
     {
-        // 1) If already logged in, send user to homepage, no login needed
+        // Redirect if already authenticated
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
@@ -43,7 +58,7 @@
             return;
         }
 
-        // 2) Existing query/error handling logic
+        // Parse query for error and returnUrl
         var uri = Nav.ToAbsoluteUri(Nav.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
 
@@ -52,13 +67,13 @@
         {
             errorMessage = error switch
             {
-                "missing" => "Email and Password requiered.",
+                "missing" => "Email and password required.",
                 "invalid" => "Invalid credentials.",
-                _ => "Login Failed."
+                _ => "Login failed."
             };
         }
 
-        // 3) Set form action URL with returnUrl if present
+        // Compose action URL
         var returnUrl = query.Get("returnUrl");
         var path = "/auth/login-form";
         if (!string.IsNullOrEmpty(returnUrl))

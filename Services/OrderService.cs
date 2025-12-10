@@ -1,3 +1,10 @@
+/*
+  File: OrderService.cs
+  Description: MongoDB-backed service for managing orders. Provides CRUD operations,
+               time-window queries, customer history, cook-focused expanded/grouped views,
+               and status updates.
+*/
+
 namespace CSE325_visioncoders.Services;
 
 using System;
@@ -8,11 +15,14 @@ using CSE325_visioncoders.Models;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
-
+/// <summary>
+///— Class: OrderRow
+/// Purpose: Lightweight projection for listing orders with denormalized meal and customer info.
+/// </summary>
 public class OrderRow
 {
     public string Id { get; set; } = default!;
-    public DateTime DeliveryDateUtc { get; set; } // Día de entrega (llave UTC 00:00)
+    public DateTime DeliveryDateUtc { get; set; }
     public string CustomerId { get; set; } = default!;
     public string CustomerName { get; set; } = "";
     public string MealId { get; set; } = default!;
@@ -21,9 +31,13 @@ public class OrderRow
     public DateTime CreatedAt { get; set; }
 }
 
+/// <summary>
+///— Class: OrderGroupRow
+///— Purpose: Aggregate row grouped by local date for a specific meal.
+/// </summary>
 public class OrderGroupRow
 {
-    public DateTime DateLocal { get; set; } // Día local (fecha)
+    public DateTime DateLocal { get; set; }
     public string MealId { get; set; } = default!;
     public string MealName { get; set; } = "";
     public int Total { get; set; }
@@ -33,22 +47,62 @@ public class OrderGroupRow
     public int Delivered { get; set; }
 }
 
+/// <summary>
+///— Interface: IOrderService
+///— Purpose: Defines operations for orders including CRUD, queries, views, and status updates.
+/// </summary>
 public interface IOrderService
 {
-    // CRUD básico
+    // CRUD Operations
+    /// <summary>
+    /// Function: GetAsync
+    /// Purpose: Retrieves all orders sorted by creation date descending.
+    /// </summary>
     Task<List<Order>> GetAsync();
+
+    /// <summary>
+    /// Function: GetByIdAsync
+    /// Purpose: Retrieves an order by its identifier.
+    /// </summary>
     Task<Order?> GetByIdAsync(string id);
+
+    /// <summary>
+    /// Function: CreateAsync
+    /// Purpose: Inserts a new order.
+    /// </summary>
     Task CreateAsync(Order order);
+
+    /// <summary>
+    /// Function: UpdateAsync
+    /// Purpose: Replaces an existing order by ID.
+    /// </summary>
     Task UpdateAsync(Order order);
+
+    /// <summary>
+    /// Function: DeleteAsync
+    /// Purpose: Deletes an order by ID.
+    /// </summary>
     Task DeleteAsync(string id);
 
-    // Ventana por CreatedAt (legacy, usada en otras pantallas)
+    // Window by CreatedAt (legacy)
+    /// <summary>
+    /// Function: GetByLocalWindowAsync
+    /// Purpose: Retrieves orders by local time window based on CreatedAt.
+    /// </summary>
     Task<List<Order>> GetByLocalWindowAsync(DateTime localStart, DateTime localEnd, string timeZoneId);
 
-    // Usado por Customers tab (legacy)
+    // Customers Tab (legacy)
+    /// <summary>
+    /// Function: GetOrdersByCustomerIdAsync
+    /// Purpose: Retrieves delivered and cancelled orders for a customer.
+    /// </summary>
     Task<List<Order>> GetOrdersByCustomerIdAsync(string customerId);
 
-    // Nuevas vistas para /cook/orders
+    // New: expanded view for /cook/orders
+    /// <summary>
+    /// Function: GetCookOrdersExpandedAsync
+    /// Purpose: Returns denormalized rows for a cook across a date range with optional filters.
+    /// </summary>
     Task<List<OrderRow>> GetCookOrdersExpandedAsync(
         string cookId,
         DateTime fromLocal,
@@ -57,6 +111,11 @@ public interface IOrderService
         DateTime? filterDateLocal = null,
         string? filterMealId = null);
 
+    // New: grouped view for a meal
+    /// <summary>
+    /// Function: GetCookOrdersGroupedAsync
+    /// Purpose: Returns grouped aggregates by local date for a specific meal and cook.
+    /// </summary>
     Task<List<OrderGroupRow>> GetCookOrdersGroupedAsync(
         string cookId,
         string mealId,
@@ -64,14 +123,27 @@ public interface IOrderService
         DateTime toLocal,
         string tzId);
 
+    // Status Updates
+    /// <summary>
+    /// Function: UpdateStatusAsync
+    /// Purpose: Updates an order's status and sets UpdatedAt.
+    /// </summary>
     Task UpdateStatusAsync(string orderId, OrderStatus newStatus);
 }
 
+/// <summary>
+///— Class: OrderService
+///— Purpose: Implements order CRUD operations, legacy queries, cook-focused views, and status updates.
+/// </summary>
 public class OrderService : IOrderService
 {
     private readonly IMongoDatabase _db;
     private readonly IMongoCollection<Order> _orders;
 
+    /// <summary>
+    /// Constructor: OrderService
+    /// Purpose: Initializes MongoDB connections and collections.
+    /// </summary>
     public OrderService(IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("MongoDb");
@@ -80,25 +152,51 @@ public class OrderService : IOrderService
         _orders = _db.GetCollection<Order>("orders");
     }
 
-    // CRUD básico
+    // CRUD Operations
+
+    /// <summary>
+    /// Function: GetAsync
+    /// Purpose: Retrieves all orders sorted by creation date descending.
+    /// </summary>
     public async Task<List<Order>> GetAsync() =>
         await _orders.Find(_ => true)
                      .SortByDescending(o => o.CreatedAt)
                      .ToListAsync();
 
+    /// <summary>
+    /// Function: GetByIdAsync
+    /// Purpose: Retrieves an order by its identifier.
+    /// </summary>
     public async Task<Order?> GetByIdAsync(string id) =>
         await _orders.Find(o => o.Id == id).FirstOrDefaultAsync();
 
+    /// <summary>
+    /// Function: CreateAsync
+    /// Purpose: Inserts a new order.
+    /// </summary>
     public async Task CreateAsync(Order order) =>
         await _orders.InsertOneAsync(order);
 
+    /// <summary>
+    /// Function: UpdateAsync
+    /// Purpose: Replaces an existing order by ID.
+    /// </summary>
     public async Task UpdateAsync(Order order) =>
         await _orders.ReplaceOneAsync(o => o.Id == order.Id, order);
 
+    /// <summary>
+    /// Function: DeleteAsync
+    /// Purpose: Deletes an order by ID.
+    /// </summary>
     public async Task DeleteAsync(string id) =>
         await _orders.DeleteOneAsync(o => o.Id == id);
 
-    // Ventana por CreatedAt (legacy)
+    // Window by CreatedAt (legacy)
+
+    /// <summary>
+    /// Function: GetByLocalWindowAsync
+    /// Purpose: Retrieves orders by local time window based on CreatedAt.
+    /// </summary>
     public async Task<List<Order>> GetByLocalWindowAsync(DateTime localStart, DateTime localEnd, string timeZoneId)
     {
         var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
@@ -113,7 +211,12 @@ public class OrderService : IOrderService
                             .ToListAsync();
     }
 
-    // FINAL METHOD USED BY CUSTOMERS TAB (legacy)
+    // Customers Tab (legacy)
+
+    /// <summary>
+    /// Function: GetOrdersByCustomerIdAsync
+    /// Purpose: Retrieves delivered and cancelled orders for a customer.
+    /// </summary>
     public async Task<List<Order>> GetOrdersByCustomerIdAsync(string customerId)
     {
         var customerFilter = Builders<Order>.Filter.Eq(o => o.CustomerId, customerId);
@@ -131,7 +234,10 @@ public class OrderService : IOrderService
                             .ToListAsync();
     }
 
-    // NUEVO: vista detalle para /cook/orders
+    /// <summary>
+    /// Function: GetCookOrdersExpandedAsync
+    /// Purpose: Returns denormalized rows for a cook across a date range with optional filters.
+    /// </summary>
     public async Task<List<OrderRow>> GetCookOrdersExpandedAsync(
         string cookId,
         DateTime fromLocal,
@@ -162,7 +268,6 @@ public class OrderService : IOrderService
         var orders = await ordersCol.Find(filter).SortBy(o => o.DeliveryDateUtc).ToListAsync();
         if (orders.Count == 0) return new List<OrderRow>();
 
-        // Join manual para nombres
         var mealIds = orders.Select(o => o.MealId).Distinct().ToList();
         var custIds = orders.Select(o => o.CustomerId).Distinct().ToList();
 
@@ -195,7 +300,10 @@ public class OrderService : IOrderService
         }).ToList();
     }
 
-    // NUEVO: vista agrupada por fecha para un meal
+    /// <summary>
+    /// Function: GetCookOrdersGroupedAsync
+    /// Purpose: Returns grouped aggregates by local date for a specific meal and cook.
+    /// </summary>
     public async Task<List<OrderGroupRow>> GetCookOrdersGroupedAsync(
         string cookId,
         string mealId,
@@ -247,7 +355,12 @@ public class OrderService : IOrderService
         return groups;
     }
 
-    // NUEVO: actualizar estado por parte del cook
+    // Status Updates
+
+    /// <summary>
+    /// Function: UpdateStatusAsync
+    /// Purpose: Updates an order's status and sets UpdatedAt.
+    /// </summary>
     public async Task UpdateStatusAsync(string orderId, OrderStatus newStatus)
     {
         var ordersCol = _db.GetCollection<Order>("orders");

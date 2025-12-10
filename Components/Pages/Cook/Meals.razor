@@ -169,6 +169,9 @@ else if (HasMeals && !showForm)
     // Max size for uploaded images (25 MB)
     private const long MaxImageSize = 25L * 1024 * 1024;
     private string? errorMessage;
+    // current cook info from auth claims
+    private string? currentCookId;
+    private string currentCookName = "Cook";
 
     protected override async Task OnInitializedAsync()
     {

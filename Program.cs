@@ -6,13 +6,15 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
+using Microsoft.AspNetCore.HttpOverrides;
+using MongoDB.Bson;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Auth y cookies
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(o =>
     {
@@ -22,49 +24,80 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         o.SlidingExpiration = true;
         o.Cookie.HttpOnly = true;
         o.Cookie.SameSite = SameSiteMode.Lax;
-        o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        o.Cookie.SecurePolicy = CookieSecurePolicy.Always; // detrás de proxy
     });
 builder.Services.AddAuthorization();
 
-// Add services to the container.
+// Blazor Server / Razor Components
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Register existing app services
+// Encabezados reenviados (proxy)
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+});
+
+// MongoDB settings
+builder.Services.Configure<MongoDbSettings>(
+    builder.Configuration.GetSection("MongoDbSettings"));
+
+// Registro de Mongo en DI (cliente + base)
+builder.Services.AddSingleton<IMongoClient>(sp =>
+{
+    var opt = sp.GetRequiredService<IOptions<MongoDbSettings>>().Value;
+    if (string.IsNullOrWhiteSpace(opt.ConnectionString))
+        throw new InvalidOperationException("MongoDbSettings:ConnectionString no configurado.");
+    return new MongoClient(opt.ConnectionString);
+});
+
+builder.Services.AddSingleton<IMongoDatabase>(sp =>
+{
+    var opt = sp.GetRequiredService<IOptions<MongoDbSettings>>().Value;
+    var client = sp.GetRequiredService<IMongoClient>();
+    var dbName = string.IsNullOrWhiteSpace(opt.DatabaseName)
+        ? new MongoUrl(opt.ConnectionString).DatabaseName
+        : opt.DatabaseName;
+    if (string.IsNullOrWhiteSpace(dbName))
+        throw new InvalidOperationException("MongoDbSettings:DatabaseName no configurado.");
+    return client.GetDatabase(dbName);
+});
+
+// Servicios de la app
 builder.Services.AddSingleton<MealService>();
 builder.Services.AddSingleton<CalendarService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddSingleton<IOrderSettingsService, OrderSettingsService>();
 builder.Services.AddSingleton<ReviewService>();
-// MongoDB settings + UserService for auth
-builder.Services.Configure<MongoDbSettings>(
-    builder.Configuration.GetSection("MongoDbSettings"));
-
 builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<InventoryService>();
-
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddHttpClient();
-
 builder.Services.AddSingleton<CustomerOrdersService>();
 builder.Services.AddSingleton<MenuDayService>();
-
 builder.Services.AddSingleton<CSE325_visioncoders.Services.MenuDayService>();
+builder.Services.AddHttpContextAccessor();
+
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// MUY ARRIBA: respeta encabezados del proxy
+app.UseForwardedHeaders();
+
+// Pipeline
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
 }
 
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+app.UseStatusCodePagesWithReExecute("/not-found");
 app.UseHttpsRedirection();
 
 app.UseAntiforgery();
-app.MapStaticAssets();
+app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -72,85 +105,16 @@ app.UseAuthorization();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-
-app.MapPost("/dev/seed", async (ILogger<Program> logger, IServiceProvider sp, IWebHostEnvironment env) =>
+// Healthcheck (incluye ping a Mongo)
+app.MapGet("/healthz", async (IMongoDatabase db) =>
 {
-    logger.LogInformation(">> /dev/seed: inicio");
-
-    try
-    {
-        // 1) Intentar obtener IMongoDatabase desde DI (si ya lo registraste en Program.cs/Startup)
-        var db = sp.GetService<IMongoDatabase>();
-        if (db == null)
-        {
-            // 2) Intentar vía IOptions<MongoDbSettings>
-            var opt = sp.GetService<IOptions<MongoDbSettings>>();
-            if (opt != null &&
-                !string.IsNullOrWhiteSpace(opt.Value.ConnectionString) &&
-                !string.IsNullOrWhiteSpace(opt.Value.DatabaseName))
-            {
-                var client = new MongoClient(opt.Value.ConnectionString);
-                db = client.GetDatabase(opt.Value.DatabaseName);
-                logger.LogInformation("IMongoDatabase obtenido desde IOptions<MongoDbSettings>.");
-            }
-            else
-            {
-                // 3) Fallback: IConfiguration directo (appsettings/connectionStrings)
-                var cfg = sp.GetRequiredService<IConfiguration>();
-
-                var conn =
-                    cfg["MongoDbSettings:ConnectionString"] ??
-                    cfg["MongoDB:ConnectionString"] ??
-                    cfg.GetConnectionString("MongoDb") ??
-                    cfg.GetConnectionString("MongoDB");
-
-                var dbName =
-                    cfg["MongoDbSettings:DatabaseName"] ??
-                    cfg["MongoDB:DatabaseName"];
-
-                if (string.IsNullOrWhiteSpace(conn))
-                    throw new InvalidOperationException("No se encontró la cadena de conexión de MongoDB en configuración.");
-
-                // Intentar obtener DatabaseName desde la propia cadena si no vino en config
-                if (string.IsNullOrWhiteSpace(dbName))
-                {
-                    var url = new MongoUrl(conn);
-                    dbName = url.DatabaseName;
-                }
-
-                if (string.IsNullOrWhiteSpace(dbName))
-                    throw new InvalidOperationException("No se pudo determinar el nombre de la base de datos de MongoDB (DatabaseName).");
-
-                var client = new MongoClient(conn);
-                db = client.GetDatabase(dbName);
-                logger.LogInformation("IMongoDatabase obtenido desde IConfiguration. DB: {DbName}", dbName);
-            }
-        }
-
-        // 4) Ejecutar seed preservando datos
-        await DevSeederPreserve.RunAsync(db, preserve: true);
-
-        logger.LogInformation("<< /dev/seed: ok");
-        return Results.Ok(new { ok = true, mode = "preserve" });
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Error en /dev/seed");
-        var detail = env.IsDevelopment() ? ex.ToString() : ex.Message;
-        return Results.Problem(title: "Dev seed failed", detail: detail, statusCode: StatusCodes.Status500InternalServerError);
-    }
-})
-.AllowAnonymous()
-.WithName("DevSeed")
-.Produces(StatusCodes.Status200OK)
-.ProducesProblem(StatusCodes.Status500InternalServerError);
+    await db.RunCommandAsync((Command<BsonDocument>)"{ ping: 1 }");
+    return Results.Ok(new { ok = true });
+});
 
 // ---------- AUTH APIs ----------
-
-// POST: /api/register
 app.MapPost("/api/register", async (RegisterRequest req, UserService userService) =>
 {
-    // Check if email already exists
     var existing = await userService.GetByEmailAsync(req.Email);
     if (existing != null)
     {
@@ -178,7 +142,6 @@ app.MapPost("/api/register", async (RegisterRequest req, UserService userService
     });
 });
 
-// POST: /api/login
 app.MapPost("/api/login", async (LoginRequest req, UserService userService) =>
 {
     var user = await userService.GetByEmailAsync(req.Email);
@@ -223,7 +186,6 @@ app.MapPost("/auth/login-form", async (HttpContext http,
         return Results.Redirect(back);
     }
 
-    // credenciales OK: crea cookie
     var claims = new List<Claim>
     {
         new Claim(ClaimTypes.NameIdentifier, user.Id ?? string.Empty),
@@ -234,23 +196,17 @@ app.MapPost("/auth/login-form", async (HttpContext http,
     var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
     await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
 
-    // destino por rol
     string redirect = "/homepage";
-
-    // returnUrl relativo tiene prioridad
     if (!string.IsNullOrWhiteSpace(returnUrl) && Uri.IsWellFormedUriString(returnUrl, UriKind.Relative))
         redirect = returnUrl!;
-
     return Results.Redirect(redirect);
 })
 .DisableAntiforgery();
 
-// POST: /auth/logout
 app.MapPost("/auth/logout", async (HttpContext http, [FromQuery] string? returnUrl) =>
 {
     await http.SignOutAsync(Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme);
 
-    // Redirige a login por defecto, o al returnUrl si viene y es relativo
     var dest = "/login";
     if (!string.IsNullOrWhiteSpace(returnUrl) && Uri.IsWellFormedUriString(returnUrl, UriKind.Relative))
         dest = returnUrl;
@@ -258,7 +214,6 @@ app.MapPost("/auth/logout", async (HttpContext http, [FromQuery] string? returnU
 })
 .DisableAntiforgery();
 
-// GET: /auth/me
 app.MapGet("/auth/me", (HttpContext http) =>
 {
     var user = http.User;
@@ -279,7 +234,7 @@ app.MapGet("/auth/me", (HttpContext http) =>
     });
 });
 
-// GET: /api/profile/me
+// Perfil
 app.MapGet("/api/profile/me", async (HttpContext http, UserService userService) =>
 {
     var userId = http.User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -304,14 +259,12 @@ app.MapGet("/api/profile/me", async (HttpContext http, UserService userService) 
 })
 .RequireAuthorization();
 
-// PUT: /api/profile/me  (update name/phone/address)
 app.MapPut("/api/profile/me", async (HttpContext http, UpdateProfileRequest req, UserService userService) =>
 {
     var userId = http.User.FindFirstValue(ClaimTypes.NameIdentifier);
     if (string.IsNullOrWhiteSpace(userId))
         return Results.Unauthorized();
 
-    // Basic validation
     if (string.IsNullOrWhiteSpace(req.Name))
         return Results.BadRequest("Name is required.");
 
@@ -326,7 +279,6 @@ app.MapPut("/api/profile/me", async (HttpContext http, UpdateProfileRequest req,
 })
 .RequireAuthorization();
 
-// POST: /api/profile/change-password
 app.MapPost("/api/profile/change-password", async (HttpContext http, ChangePasswordRequest req, UserService userService) =>
 {
     var userId = http.User.FindFirstValue(ClaimTypes.NameIdentifier);

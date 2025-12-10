@@ -1,0 +1,10 @@
+@page "/logout"
+<form method="post" action="/auth/logout"></form>
+@code {
+    [Inject] IJSRuntime JS { get; set; } = default!;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await JS.InvokeVoidAsync("eval", "document.forms[0].submit()");
+    }
+}

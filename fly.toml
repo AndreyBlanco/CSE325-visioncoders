@@ -1,0 +1,33 @@
+# fly.toml app configuration file generated for lunchmate on 2025-12-09T19:15:18-06:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'lunchmate'
+primary_region = 'dfw'
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+  [[http_service.checks]]
+    interval = "10s"
+    timeout = "2s"
+    method = "GET"
+    path = "/healthz"
+    protocol = "http"
+    grace_period = "10s"
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+app = "cse325-visioncoders"
+primary_region = "scl"
+

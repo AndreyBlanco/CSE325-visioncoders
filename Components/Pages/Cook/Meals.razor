@@ -138,12 +138,12 @@ else if (HasMeals && !showForm)
     private List<Meal>? meals;
     private bool showForm;
 
-   
+    // claim-based cook info
     private string? CookId;
     private string CookDisplayName = "Cook";
 
     private static string? GetClaim(ClaimsPrincipal user, string type)
-    => user?.Claims?.FirstOrDefault(c => c.Type == type)?.Value;
+        => user?.Claims?.FirstOrDefault(c => c.Type == type)?.Value;
 
     private async Task LoadAuthAsync()
     {
@@ -151,25 +151,20 @@ else if (HasMeals && !showForm)
         var user = state.User;
 
         CookId = GetClaim(user, ClaimTypes.NameIdentifier)
-        ?? GetClaim(user, "sub")
-        ?? GetClaim(user, "oid")
-        ?? GetClaim(user, "id");
+                 ?? GetClaim(user, "sub")
+                 ?? GetClaim(user, "oid")
+                 ?? GetClaim(user, "id");
 
         CookDisplayName = GetClaim(user, ClaimTypes.Name)
-        ?? GetClaim(user, "name")
-        ?? GetClaim(user, "preferred_username")
-        ?? GetClaim(user, "email")
-        ?? "Cook";
+                          ?? GetClaim(user, "name")
+                          ?? GetClaim(user, "preferred_username")
+                          ?? GetClaim(user, "email")
+                          ?? "Cook";
     }
-    
 
     // Max size for uploaded images (25 MB)
     private const long MaxImageSize = 25L * 1024 * 1024;
     private string? errorMessage;
-
-    // current cook info from auth claims
-    private string? currentCookId;
-    private string currentCookName = "Cook";
 
     protected override async Task OnInitializedAsync()
     {
@@ -184,18 +179,16 @@ else if (HasMeals && !showForm)
         errorMessage = null;
 
         // Safety: page is [Authorize], so this SHOULD be set.
-        if (string.IsNullOrWhiteSpace(currentCookId))
+        if (string.IsNullOrWhiteSpace(CookId))
         {
             errorMessage = "Unable to determine cook for this account.";
             return;
         }
+
+        // Set cook info from claims
         newMeal.CookId = CookId!;
         if (string.IsNullOrWhiteSpace(newMeal.CookName))
             newMeal.CookName = CookDisplayName;
-
-        // Always set cook info from the logged-in user
-        newMeal.CookId = currentCookId!;
-        newMeal.CookName = currentCookName;
 
         await _mealService.CreateAsync(newMeal);
 
@@ -211,8 +204,8 @@ else if (HasMeals && !showForm)
         // Pre-fill cook info into the new meal
         newMeal = new Meal
         {
-            CookId = currentCookId ?? string.Empty,
-            CookName = currentCookName
+            CookId = CookId ?? string.Empty,
+            CookName = CookDisplayName
         };
 
         showForm = true;
@@ -239,7 +232,6 @@ else if (HasMeals && !showForm)
     {
         errorMessage = null;
 
-        // Get the selected file
         var file = e.File;
         if (file is null)
             return;
@@ -247,14 +239,12 @@ else if (HasMeals && !showForm)
         var ext = Path.GetExtension(file.Name).ToLowerInvariant();
         var allowed = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 
-        // Validate file type
         if (!allowed.Contains(ext))
         {
             errorMessage = "Invalid image type. Please upload a JPG, PNG, GIF, or WEBP file.";
             return;
         }
 
-        // Check size before opening stream
         if (file.Size > MaxImageSize)
         {
             var sizeMb = file.Size / 1024 / 1024;
@@ -263,7 +253,6 @@ else if (HasMeals && !showForm)
             return;
         }
 
-        // Save the file to wwwroot/img/meals and set the ImageUrl  
         var uploadsFolder = Path.Combine(Env.WebRootPath, "img", "meals");
         Directory.CreateDirectory(uploadsFolder);
 
@@ -277,7 +266,6 @@ else if (HasMeals && !showForm)
         newMeal.ImageUrl = $"img/meals/{fileName}";
     }
 
-    // Helper to get image or placeholder
     private string GetImage(string? url)
         => string.IsNullOrWhiteSpace(url) ? "img/placeholder-meal.png" : url;
 }

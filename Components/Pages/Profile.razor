@@ -357,7 +357,7 @@
         var fileName = $"{Guid.NewGuid()}{ext}";
         var filePath = Path.Combine(uploadsFolder, fileName);
 
-        await using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+        await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
         await using var fs = File.Create(filePath);
         await stream.CopyToAsync(fs);
 

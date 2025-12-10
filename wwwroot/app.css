@@ -32,11 +32,7 @@ a, .btn-link {
     color: #fff;
     background-color: #133956;
     border-color: #133956;
-    margin-top: 1rem;
-}
-
-.btn-secondary {
-    margin-top: 1rem;
+    
 }
 
 .btn-primary:hover {
@@ -45,6 +41,9 @@ a, .btn-link {
     border-color: #f07f1a ;
 }
 
+.filter-actions {
+    margin-top: 1rem;
+}
 
 .loginForm {
     display: flex;

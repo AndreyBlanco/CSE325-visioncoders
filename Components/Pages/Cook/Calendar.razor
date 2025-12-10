@@ -1,5 +1,10 @@
 @page "/cook/calendar"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "cook,admin")]
+<!-- 
+    This page represents the weekly calendar interface used by cooks.
+    It is restricted to users with role 'cook' or 'admin'.
+    The view allows managing daily menus, assigning meals, and reviewing event indicators.
+-->
 
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
@@ -12,15 +17,14 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject MenuDayService MenuDayService
 
-@*<div class="titleBar">
-    <img class="titleIcon" src="img/calendarIcon.svg" alt="calendar icon">
-    <a>Calendar</a>
-</div>*@
-
+<!-- 
+    The <PageHeader> component provides a consistent header across the system.
+    It replaces the old commented-out header block for improved UI uniformity.
+-->
 <PageHeader Icon="img/calendarIcon.svg" Title="Calendar" />
 
 
-<!-- ALERTS -->
+<!-- ALERTS AREA: Shows cutoff warnings for today and tomorrow -->
 @if (!string.IsNullOrEmpty(todayAlert) || !string.IsNullOrEmpty(tomorrowAlert))
 {
     <div class="mb-3">
@@ -40,26 +44,37 @@
     </div>
 }
 
-<!-- HEADER -->
+<!-- PAGE HEADER (title + month-view button) -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3 class="m-0">Weekly Calendar</h3>
 
+    <!-- Navigates the cook to the month-level overview -->
     <button class="btn btn-outline-secondary" @onclick="GoToMonthView">
         📅 View Full Month
     </button>
 </div>
 
-<!-- WEEK NAVIGATION -->
+<!-- WEEK NAVIGATION: Allows jumping backward or forward one week -->
 <div class="d-flex align-items-center mb-3">
-    <button class="btn btn-outline-primary me-2" @onclick="PreviousWeek">◀ Previous</button>
-    <h4 class="m-0">@weekStart.ToString("dd MMM yyyy") - @weekEnd.ToString("dd MMM yyyy")</h4>
-    <button class="btn btn-outline-primary ms-2" @onclick="NextWeek">Next ▶</button>
+    <button class="btn btn-outline-primary me-2" @onclick="PreviousWeek">
+        ◀ Previous
+    </button>
+
+    <!-- Displays the range currently being viewed -->
+    <h4 class="m-0">
+        @weekStart.ToString("dd MMM yyyy") - @weekEnd.ToString("dd MMM yyyy")
+    </h4>
+
+    <button class="btn btn-outline-primary ms-2" @onclick="NextWeek">
+        Next ▶
+    </button>
 </div>
 
-<!-- WEEK GRID -->
+<!-- WEEK GRID: Main calendar table showing 7 days -->
 <table class="table table-bordered calendar-table-sm">
     <thead>
         <tr>
+            <!-- Column headers use fixed short names (Mon-Sun) -->
             @foreach (var dayName in dayNames)
             {
                 <th class="text-center">@dayName</th>
@@ -73,24 +88,31 @@
             {
                 var day = weekStart.AddDays(i);
                 menuByDate.TryGetValue(day.Date, out var menu);
+
+                <!-- Events retrieved per specific day to show icons -->
                 var eventsOfDay = CalendarService.GetEventsByDay(day.Date).ToList();
 
                 <td class="calendar-cell-sm @(selectedDate.Date == day.Date ? "calendar-cell-selected" : "")"
                     @onclick="() => SelectDay(day)">
+                    <!-- 
+                            Selecting a day populates the side panel for editing.
+                            The conditional class highlights the active day.
+                        -->
 
-                    <!-- DATE + STATUS -->
+                    <!-- DATE + DAILY STATUS BADGE -->
                     <div class="d-flex justify-content-between align-items-center">
                         <strong>@day.Day</strong>
 
                         @if (menu != null)
                         {
+                            <!-- Status badge reflects Draft / Published / Closed -->
                             <span class="badge bg-@GetStatusColor(menu.Status)">
                                 @menu.Status
                             </span>
                         }
                     </div>
 
-                    <!-- DISHES -->
+                    <!-- DISH LIST: Shows names of the 1–3 meals assigned to the day -->
                     @if (menu != null)
                     {
                         @foreach (var dish in menu.Dishes.OrderBy(d => d.Index))
@@ -102,18 +124,20 @@
                         }
                     }
 
-                    <!-- EVENT ICONS -->
+                    <!-- EVENT ICON AREA: Shows up to 3 event type icons -->
                     @if (eventsOfDay.Any())
                     {
                         <div class="mt-1 small">
                             @foreach (var ev in eventsOfDay.Take(3))
                             {
+                                <!-- Icon is chosen based on category; tooltip includes event title and time -->
                                 <span title="@($"{ev.Title} ({ev.Start:HH:mm})")">
                                     @GetEventIcon(ev.Category)
                                 </span>
                             }
                             @if (eventsOfDay.Count > 3)
                             {
+                                <!-- Displays how many additional events are hidden -->
                                 <span>+@((eventsOfDay.Count - 3))</span>
                             }
                         </div>
@@ -124,19 +148,21 @@
     </tbody>
 </table>
 
-<!-- SIDE PANEL -->
+<!-- SIDE PANEL: Opens when user selects a day -->
 @if (selectedMenuDay != null)
 {
     bool isClosed = isDayClosed;
+    <!-- Cached flag avoids recalculating -->
 
     <div class="card mt-4">
         <div class="card-header">
+            <!-- Displays full day name for clarity -->
             @selectedMenuDay.Date.ToString("dddd dd MMMM")
         </div>
 
         <div class="card-body">
 
-            <!-- STATUS -->
+            <!-- STATUS DROPDOWN: Disabled when day is closed -->
             <div class="mb-3">
                 <label class="form-label">Status</label>
                 <select class="form-select" @bind="selectedMenuDay.Status" disabled="@isClosed">
@@ -146,12 +172,13 @@
                 </select>
             </div>
 
-            <!-- DISHES SELECT -->
+            <!-- DISH SELECT SECTION: One block per dish slot (1–3) -->
             @foreach (var dish in selectedMenuDay.Dishes.OrderBy(d => d.Index))
             {
                 <div class="mb-3 border rounded p-2">
                     <h6>Dish @dish.Index</h6>
 
+                    <!-- MEAL SELECT DROPDOWN -->
                     <div class="mb-2">
                         <label class="form-label">Meal</label>
 
@@ -162,6 +189,7 @@
 
                             @foreach (var m in meals)
                             {
+                                <!-- Shows meal name + formatted price -->
                                 <option value="@m.Id" selected="@((dish.MealId == m.Id))">
                                     @m.Name (@m.Price.ToString("0.00"))
                                 </option>
@@ -169,6 +197,7 @@
                         </select>
                     </div>
 
+                    <!-- Displays the selected meal’s name for convenience -->
                     @if (!string.IsNullOrWhiteSpace(dish.Name))
                     {
                         <div class="mb-2 small text-muted">
@@ -176,6 +205,7 @@
                         </div>
                     }
 
+                    <!-- NOTES FIELD -->
                     <div>
                         <label class="form-label">Notes</label>
                         <input class="form-control" @bind="dish.Notes" disabled="@isClosed" />
@@ -183,37 +213,55 @@
                 </div>
             }
 
+            <!-- SAVE BUTTON: Only available when day is not closed -->
             <button class="btn btn-primary mt-3" @onclick="SaveMenu" disabled="@isClosed">
                 Save Menu
             </button>
 
+            <!-- LINK TO DAY VIEW -->
             <button class="btn btn-outline-info mt-3 ms-2" @onclick="() => GoToDayView(selectedMenuDay.Date)">
                 View Full Day →
             </button>
         </div>
     </div>
 }
-
 @code {
+    // Start and end dates for the currently displayed week
     private DateTime weekStart;
     private DateTime weekEnd;
+
+    // Currently selected day in the calendar
     private DateTime selectedDate;
 
+    // Stores MenuDay entries indexed by date for fast lookup
     private readonly Dictionary<DateTime, MenuDay> menuByDate = new();
+
+    // The day currently being edited in the side panel
     private MenuDay? selectedMenuDay;
 
+    // Cached list of meals available for assigning to dishes
     private List<Meal> meals = new();
 
+    // Indicates whether the selected day is closed (cutoff logic)
     private bool isDayClosed = false;
 
+    // Dynamic messages informing the user about cutoff times
     private string? todayAlert;
     private string? tomorrowAlert;
 
+    // Authenticated cook performing actions
     private string? CookId;
+
+    // Time zone used for saving MenuDay data to Mongo
     private string TimeZoneId = "America/Bogota";
 
+    // Static short weekday names used in the calendar table header
     private readonly string[] dayNames = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
 
+    /// <summary>
+    /// Loads menu data for the current week, ensuring all 7 days have an entry.
+    /// Missing days are auto-created via CalendarService.
+    /// </summary>
     private void LoadWeek()
     {
         menuByDate.Clear();
@@ -222,6 +270,7 @@
         foreach (var m in menus)
             menuByDate[m.Date.Date] = m;
 
+        // Ensure every day in the week has a MenuDay object
         for (int i = 0; i < 7; i++)
         {
             var d = weekStart.AddDays(i).Date;
@@ -231,6 +280,10 @@
         }
     }
 
+    /// <summary>
+    /// Moves calendar view one week backward.
+    /// Recomputes displayed days and updates alerts.
+    /// </summary>
     private void PreviousWeek()
     {
         weekStart = weekStart.AddDays(-7);
@@ -240,6 +293,9 @@
         UpdateAlerts();
     }
 
+    /// <summary>
+    /// Moves calendar view one week forward.
+    /// </summary>
     private void NextWeek()
     {
         weekStart = weekStart.AddDays(7);
@@ -249,6 +305,10 @@
         UpdateAlerts();
     }
 
+    /// <summary>
+    /// Selects a specific day on the calendar.
+    /// Loads its MenuDay and checks if it is past cutoff.
+    /// </summary>
     private void SelectDay(DateTime day)
     {
         selectedDate = day.Date;
@@ -256,9 +316,16 @@
         isDayClosed = CalendarService.IsDayClosed(selectedDate);
     }
 
+    /// <summary>
+    /// Initialization logic:
+    /// - Loads authentication (cook ID)
+    /// - Gets available meals
+    /// - Computes the current week range
+    /// - Loads calendar and alerts
+    /// </summary>
     protected override async Task OnInitializedAsync()
     {
-        await LoadAuthAsync(); // ← nuevo
+        await LoadAuthAsync(); // Extract cook ID from claims
 
         meals = await MealService.GetAsync();
 
@@ -271,6 +338,11 @@
         UpdateAlerts();
     }
 
+    /// <summary>
+    /// Saves the currently edited MenuDay.
+    /// Uses both MenuDayService (Mongo persistence) and CalendarService (local memory).
+    /// Disabled when the day is closed.
+    /// </summary>
     private async void SaveMenu()
     {
         if (selectedMenuDay == null || isDayClosed) return;
@@ -285,6 +357,11 @@
         StateHasChanged();
     }
 
+    /// <summary>
+    /// When the cook selects a different meal for a dish slot:
+    /// - Updates mealId
+    /// - Auto-fills Name and Notes (if empty)
+    /// </summary>
     private void OnMealSelected(MenuDish dish, string? mealId)
     {
         if (isDayClosed) return;
@@ -302,23 +379,37 @@
         {
             dish.Name = meal.Name;
 
+            // If no notes exist, auto-fill with meal description
             if (string.IsNullOrWhiteSpace(dish.Notes))
                 dish.Notes = meal.Description;
         }
     }
 
+    /// <summary>
+    /// Navigates to full month calendar view.
+    /// </summary>
     private void GoToMonthView() =>
     Nav.NavigateTo("/cook/calendar/month");
 
+    /// <summary>
+    /// Opens detailed single-day view.
+    /// </summary>
     private void GoToDayView(DateTime date) =>
     Nav.NavigateTo($"/cook/calendar/day/{date:yyyy-MM-dd}");
 
+    /// <summary>
+    /// Calculates the Monday of the week for the given date.
+    /// Blazor calendars often standardize to Monday-week.
+    /// </summary>
     private static DateTime StartOfWeek(DateTime date)
     {
         int diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
         return date.AddDays(-diff).Date;
     }
 
+    /// <summary>
+    /// Lightweight UI mapping of MenuDayStatus to Bootstrap color classes.
+    /// </summary>
     private string GetStatusColor(MenuDayStatus status) =>
     status switch
     {
@@ -328,6 +419,9 @@
         _ => "secondary"
     };
 
+    /// <summary>
+    /// Maps event categories to emojis used in the calendar grid.
+    /// </summary>
     private string GetEventIcon(CalendarEventCategory cat)
     {
         return cat switch
@@ -342,6 +436,9 @@
         };
     }
 
+    /// <summary>
+    /// Generates informational alerts for today and tomorrow cutoff status.
+    /// </summary>
     private void UpdateAlerts()
     {
         todayAlert = null;
@@ -362,9 +459,16 @@
         : $"Tomorrow ({tomorrow:dd MMM}) cutoff 08:00.";
     }
 
+    /// <summary>
+    /// Safely extracts claims from authenticated user (multiple providers supported).
+    /// </summary>
     private static string? GetClaim(ClaimsPrincipal user, string type)
     => user?.Claims?.FirstOrDefault(c => c.Type == type)?.Value;
 
+    /// <summary>
+    /// Reads auth state and extracts a usable cook identifier.
+    /// Supports different claim types depending on identity provider.
+    /// </summary>
     private async Task LoadAuthAsync()
     {
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -378,11 +482,13 @@
 }
 
 <style>
+    /* Small table layout for weekly view */
     .calendar-table-sm {
         width: 100%;
         background-color: #ffffff;
     }
 
+    /* Calendar cell appearance */
     .calendar-cell-sm {
         height: 80px;
         cursor: pointer;
@@ -395,6 +501,7 @@
         background-color: #eef6ff;
     }
 
+    /* Selected day highlight */
     .calendar-cell-selected {
         outline: 2px solid #0d6efd;
         background-color: #e7f1ff;

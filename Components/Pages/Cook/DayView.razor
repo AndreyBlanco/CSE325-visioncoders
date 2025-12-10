@@ -1,13 +1,22 @@
 @page "/cook/calendar/day/{date:datetime}"
+
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "cook,admin")]
+@* Route receives a date parameter and is restricted to authenticated users with roles "cook" or "admin". *@
 
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
 @using CSE325_visioncoders.Components.Shared
+
+@* Provides operational calendar services (events CRUD and day cutoff rules). *@
 @inject CalendarService CalendarService
+
+@* Handles page navigation (back to week, etc.). *@
 @inject NavigationManager Nav
 
+
 <PageHeader Icon="img/calendarIcon.svg" Title="Calendar" />
+@* Reusable header component for consistent UI presentation. *@
+
 
 <h3>Day View — @date.ToString("dddd dd MMMM")</h3>
 
@@ -16,11 +25,15 @@
     <div class="alert alert-warning">
         This day is closed (cutoff 08:00). You can review events but not modify them.
     </div>
+    @* Informs the user that this date is locked for changes due to the cutoff logic. *@
 }
 
 <button class="btn btn-outline-secondary mb-3" @onclick="GoBack">
     ← Back to Week
 </button>
+@* Returns the user to the weekly calendar view. *@
+
+
 
 <!-- EVENT LIST -->
 <div class="card">
@@ -30,6 +43,7 @@
         <button class="btn btn-success btn-sm" @onclick="ShowAddModal" disabled="@isDayClosed">
             + Add Event
         </button>
+        @* Opens the modal for adding a new operational event. Disabled if the day is closed. *@
     </div>
 
     <div class="card-body">
@@ -37,6 +51,7 @@
         @if (!events.Any())
         {
             <p class="text-muted">No events for this day.</p>
+            @* Shown when the day contains no operational events. *@
         }
         else
         {
@@ -55,19 +70,27 @@
                     {
                         <tr>
                             <td>@ev.Start.ToString("HH:mm") - @ev.End.ToString("HH:mm")</td>
+                            @* Displays the time range of the event. *@
+
                             <td>@ev.Title</td>
+                            @* Human-readable event title. *@
+
                             <td>@ev.Category</td>
+                            @* Operational category such as Delivery, Purchase, Meeting, etc. *@
 
                             <td class="text-end">
+
                                 <button class="btn btn-warning btn-sm me-1" @onclick="() => EditEvent(ev)"
                                     disabled="@isDayClosed">
                                     Edit
                                 </button>
+                                @* Opens modal with the selected event preloaded for editing. *@
 
                                 <button class="btn btn-danger btn-sm" @onclick="() => DeleteEvent(ev.Id)"
                                     disabled="@isDayClosed">
                                     Delete
                                 </button>
+                                @* Deletes the event after confirmation. Disabled on closed days. *@
                             </td>
                         </tr>
                     }
@@ -77,10 +100,13 @@
     </div>
 </div>
 
-<!-- MODAL -->
+
+
+<!-- EVENT MODAL (ADD / EDIT) -->
 @if (showModal)
 {
     <div class="modal-backdrop fade show"></div>
+    @* Dark overlay behind modal dialog. *@
 
     <div class="modal d-block" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -88,33 +114,40 @@
 
                 <div class="modal-header">
                     <h5 class="modal-title">@modalTitle</h5>
+                    @* Modal title dynamically switches between "Add Event" and "Edit Event". *@
+
                     <button class="btn-close" @onclick="CloseModal"></button>
                 </div>
 
                 <div class="modal-body">
 
+                    @* Event title input *@
                     <div class="mb-2">
                         <label class="form-label">Title</label>
                         <input class="form-control" @bind="editingEvent.Title" />
                     </div>
 
+                    @* Event description input *@
                     <div class="mb-2">
                         <label class="form-label">Description</label>
                         <textarea class="form-control" @bind="editingEvent.Description"></textarea>
                     </div>
 
+                    @* Start datetime field *@
                     <div class="mb-2">
                         <label class="form-label">Start</label>
                         <input type="datetime-local" class="form-control" @bind-value="editingEvent.Start"
                             @bind-value:format="yyyy-MM-ddTHH:mm" />
                     </div>
 
+                    @* End datetime field *@
                     <div class="mb-2">
                         <label class="form-label">End</label>
                         <input type="datetime-local" class="form-control" @bind-value="editingEvent.End"
                             @bind-value:format="yyyy-MM-ddTHH:mm" />
                     </div>
 
+                    @* Category dropdown menu *@
                     <div class="mb-2">
                         <label class="form-label">Category</label>
                         <select class="form-select" @bind="editingEvent.Category">
@@ -129,47 +162,65 @@
 
                 <div class="modal-footer">
                     <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
-                    <button class="btn btn-primary" @onclick="SaveEvent" disabled="@isDayClosed">Save</button>
+
+                    <button class="btn btn-primary" @onclick="SaveEvent" disabled="@isDayClosed">
+                        Save
+                    </button>
+                    @* Saves the changes: creates new event or updates existing one. *@
                 </div>
             </div>
         </div>
     </div>
 }
 
+
+
 @code {
 
     [Parameter]
     public DateTime date { get; set; }
+    @* Date passed via the route to determine what day is being viewed. *@
 
     private List<CalendarEvent> events = new();
+    @* Collection of all events loaded for the selected day. *@
 
     private bool showModal = false;
     private string modalTitle = "Add Event";
 
     private CalendarEvent editingEvent = new();
+    @* Internal working copy used when adding or editing an event. *@
 
     private bool isDayClosed;
+    @* Determines whether modifications are allowed based on cutoff logic. *@
+
 
     protected override void OnInitialized()
     {
         isDayClosed = CalendarService.IsDayClosed(date);
+        @* Checks whether the date is locked from updates (cutoff = 08:00). *@
+
         LoadEvents();
+        @* Loads operational events for this specific day. *@
     }
+
 
     private void LoadEvents()
     {
         events = CalendarService.GetEventsByDay(date).ToList();
+        @* Retrieves all calendar events assigned to this day. *@
     }
+
 
     private void GoBack()
     {
         Nav.NavigateTo("/cook/calendar");
+        @* Navigates back to the weekly calendar view. *@
     }
+
 
     private void ShowAddModal()
     {
-        if (isDayClosed)
-            return;
+        if (isDayClosed) return;
 
         editingEvent = new CalendarEvent
         {
@@ -177,15 +228,16 @@
             End = date.Date.AddHours(10),
             Category = CalendarEventCategory.Other
         };
+        @* Initializes a new event with default values. *@
 
         modalTitle = "Add Event";
         showModal = true;
     }
 
+
     private void EditEvent(CalendarEvent ev)
     {
-        if (isDayClosed)
-            return;
+        if (isDayClosed) return;
 
         editingEvent = new CalendarEvent
         {
@@ -196,28 +248,32 @@
             End = ev.End,
             Category = ev.Category
         };
+        @* Clones the selected event into editable state for modal editing. *@
 
         modalTitle = "Edit Event";
         showModal = true;
     }
 
+
     private void SaveEvent()
     {
-        if (isDayClosed)
-            return;
+        if (isDayClosed) return;
 
         if (editingEvent.Id == 0)
         {
             CalendarService.CreateEvent(editingEvent);
+            @* Creates a new operational event. *@
         }
         else
         {
             CalendarService.UpdateEvent(editingEvent);
+            @* Updates an existing event. *@
         }
 
         CloseModal();
         LoadEvents();
     }
+
 
     private void DeleteEvent(int id)
     {
@@ -225,16 +281,20 @@
 
         CalendarService.DeleteEvent(id);
         LoadEvents();
+        @* Removes the event and refreshes the list. *@
     }
+
 
     private void CloseModal()
     {
         showModal = false;
+        @* Closes the modal dialog. *@
     }
 }
 
 <style>
     .modal-backdrop {
         background-color: rgba(0, 0, 0, 0.4);
+        /* Semi-transparent overlay behind modal for focus effect */
     }
 </style>

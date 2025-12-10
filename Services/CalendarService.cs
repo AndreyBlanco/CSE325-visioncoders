@@ -5,23 +5,34 @@ using CSE325_visioncoders.Models;
 
 namespace CSE325_visioncoders.Services
 {
+    /// <summary>
+    /// Core service responsible for managing menu days, confirmations,
+    /// and calendar events inside LunchMate.  
+    /// This service operates entirely in-memory and simulates persistence
+    /// for demo and UI development purposes.
+    /// </summary>
     public class CalendarService
     {
+        // Simulated data storage (in a real application this would be a database)
         private readonly List<MenuDay> _menuDays = new();
         private readonly List<Confirmation> _confirmations = new();
         private readonly List<Client> _clients = new();
         private readonly List<CalendarEvent> _events = new();
 
+        // Internal counters used to generate unique IDs
         private int _nextMenuDayId = 1;
         private int _nextConfirmationId = 1;
         private int _nextEventId = 1;
 
-        // Hora límite 08:00
+        // Daily order cutoff time: after 08:00 AM customers cannot confirm/cancel
         private readonly TimeSpan CutoffTime = new(8, 0, 0);
 
+        /// <summary>
+        /// Initializes the service with example clients to support the UI workflow.
+        /// This avoids empty states while the team builds the front-end experience.
+        /// </summary>
         public CalendarService()
         {
-            // Clientes de ejemplo
             _clients = new()
             {
                 new Client { Id = "c1", Name = "Juan Pérez" },
@@ -34,25 +45,34 @@ namespace CSE325_visioncoders.Services
         public IEnumerable<Client> GetClients() => _clients;
 
         /* ============================================================
-           CUT-OFF RULES
+           CUT-OFF LOGIC
+           Rules that determine when a customer can or cannot modify
+           a meal confirmation.
         ============================================================ */
 
+        /// <summary>
+        /// Determines whether a given date should be considered closed
+        /// for customer confirmations based on cutoff rules.
+        /// Past dates are always closed; today closes after 08:00 AM.
+        /// </summary>
         public bool IsDayClosed(DateTime date)
         {
             date = date.Date;
             var now = DateTime.Now;
 
-            // Días pasados siempre cerrados
             if (date < DateTime.Today)
                 return true;
 
-            // Hoy se cierra a las 08:00
             if (date == DateTime.Today && now.TimeOfDay >= CutoffTime)
                 return true;
 
             return false;
         }
 
+        /// <summary>
+        /// Automatically updates a MenuDay’s status if the cutoff time has passed.
+        /// Ensures UI always stays consistent without requiring user actions.
+        /// </summary>
         private void ApplyAutoCutoff(MenuDay menuDay)
         {
             if (IsDayClosed(menuDay.Date))
@@ -69,6 +89,14 @@ namespace CSE325_visioncoders.Services
            MENU DAYS
         ============================================================ */
 
+        /// <summary>
+        /// Retrieves all MenuDay entries within a date range.  
+        /// Each MenuDay is normalized before returning:
+        /// - Ensures exactly 3 dish slots
+        /// - Recounts confirmations
+        /// - Applies cutoff rules
+        /// A clone is returned to protect internal state.
+        /// </summary>
         public IEnumerable<MenuDay> GetMenuForRange(DateTime start, DateTime end)
         {
             var s = start.Date;
@@ -79,7 +107,6 @@ namespace CSE325_visioncoders.Services
                 .OrderBy(m => m.Date)
                 .ToList();
 
-            // Mantener siempre coherente: 3 platos, contadores y cutoff
             foreach (var m in list)
             {
                 m.EnsureThreeDishes();
@@ -92,6 +119,10 @@ namespace CSE325_visioncoders.Services
                 .ToList();
         }
 
+        /// <summary>
+        /// Gets an existing MenuDay or creates a new draft day automatically.
+        /// Used heavily by the UI to ensure the calendar is always populated.
+        /// </summary>
         public MenuDay GetOrCreateMenuDay(DateTime date)
         {
             date = date.Date;
@@ -121,6 +152,10 @@ namespace CSE325_visioncoders.Services
             return CloneMenuDay(menuDay);
         }
 
+        /// <summary>
+        /// Saves a MenuDay after the cook publishes or updates the dishes.
+        /// Enforces cutoff rules and captures publish timestamps.
+        /// </summary>
         public void SaveMenuDay(MenuDay updated)
         {
             if (updated == null) return;
@@ -144,6 +179,8 @@ namespace CSE325_visioncoders.Services
                 var wasPublished = existing.Status == MenuDayStatus.Published;
 
                 existing.Status = updated.Status;
+
+                // Ensures stable ordering of dishes
                 existing.Dishes = updated.Dishes
                     .OrderBy(x => x.Index)
                     .Select(x => new MenuDish
@@ -155,7 +192,7 @@ namespace CSE325_visioncoders.Services
                     })
                     .ToList();
 
-                // Marca PublishedAt cuando se publica por primera vez
+                // Record when the day transitions into "Published"
                 if (!wasPublished && existing.Status == MenuDayStatus.Published)
                 {
                     existing.PublishedAt = DateTime.Now;
@@ -170,6 +207,10 @@ namespace CSE325_visioncoders.Services
            CONFIRMATIONS
         ============================================================ */
 
+        /// <summary>
+        /// Adds a customer confirmation for a specific dish of a MenuDay.
+        /// Enforces cutoff logic to prevent late confirmations.
+        /// </summary>
         public Confirmation AddConfirmation(string clientId, DateTime date, int dishIndex)
         {
             if (IsDayClosed(date))
@@ -193,6 +234,10 @@ namespace CSE325_visioncoders.Services
             return conf;
         }
 
+        /// <summary>
+        /// Cancels a confirmation if the day is not yet closed.
+        /// Helps maintain accurate meal counts for the kitchen.
+        /// </summary>
         public bool CancelConfirmation(int confirmationId)
         {
             var conf = _confirmations.FirstOrDefault(c => c.Id == confirmationId);
@@ -208,6 +253,10 @@ namespace CSE325_visioncoders.Services
             return true;
         }
 
+        /// <summary>
+        /// Retrieves all active (non-canceled) confirmations for a specific day.
+        /// Used by the kitchen to know how many meals to prepare.
+        /// </summary>
         public IEnumerable<Confirmation> GetConfirmationsByDay(DateTime date)
         {
             var d = date.Date;
@@ -216,6 +265,10 @@ namespace CSE325_visioncoders.Services
                 .ToList();
         }
 
+        /// <summary>
+        /// Returns a count of confirmations grouped by dish index.
+        /// Supports dish badges in the UI and informs kitchen planning.
+        /// </summary>
         public Dictionary<int, int> GetConfirmationsByDish(DateTime date)
         {
             var d = date.Date;
@@ -226,6 +279,9 @@ namespace CSE325_visioncoders.Services
                 .ToDictionary(g => g.Key, g => g.Count());
         }
 
+        /// <summary>
+        /// Updates the total confirmation count displayed for a MenuDay.
+        /// </summary>
         private void UpdateConfirmationCounters(MenuDay menuDay)
         {
             var d = menuDay.Date;
@@ -238,6 +294,10 @@ namespace CSE325_visioncoders.Services
            EVENTS
         ============================================================ */
 
+        /// <summary>
+        /// Creates a new calendar event (non-meal related).  
+        /// Basic validation ensures the event has a valid time range.
+        /// </summary>
         public CalendarEvent CreateEvent(CalendarEvent ev)
         {
             ValidateEvent(ev);
@@ -247,6 +307,10 @@ namespace CSE325_visioncoders.Services
             return ev;
         }
 
+        /// <summary>
+        /// Retrieves events that overlap with a specific day.
+        /// Supports additional UX components like schedule overlays.
+        /// </summary>
         public IEnumerable<CalendarEvent> GetEventsByDay(DateTime date)
         {
             var d = date.Date;
@@ -257,6 +321,9 @@ namespace CSE325_visioncoders.Services
                 .ToList();
         }
 
+        /// <summary>
+        /// Retrieves all events within a date range.
+        /// </summary>
         public IEnumerable<CalendarEvent> GetEventsRange(DateTime start, DateTime end)
         {
             var s = start.Date;
@@ -268,6 +335,9 @@ namespace CSE325_visioncoders.Services
                 .ToList();
         }
 
+        /// <summary>
+        /// Updates a stored calendar event with new metadata.
+        /// </summary>
         public bool UpdateEvent(CalendarEvent ev)
         {
             ValidateEvent(ev);
@@ -288,6 +358,9 @@ namespace CSE325_visioncoders.Services
             return true;
         }
 
+        /// <summary>
+        /// Removes an event permanently.
+        /// </summary>
         public bool DeleteEvent(int id)
         {
             var ev = _events.FirstOrDefault(x => x.Id == id);
@@ -297,7 +370,10 @@ namespace CSE325_visioncoders.Services
             return true;
         }
 
-        // Validación sencilla: si End < Start, corrige a 1 hora de duración
+        /// <summary>
+        /// Ensures event times are valid.  
+        /// If an end time is earlier than the start, the system defaults to 1-hour duration.
+        /// </summary>
         private void ValidateEvent(CalendarEvent ev)
         {
             if (ev.End < ev.Start)
@@ -307,7 +383,8 @@ namespace CSE325_visioncoders.Services
         }
 
         /* ============================================================
-           CLONE
+           INTERNAL CLONE
+           Protects internal data from being modified by UI components.
         ============================================================ */
 
         private static MenuDay CloneMenuDay(MenuDay src)

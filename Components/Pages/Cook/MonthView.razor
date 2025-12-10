@@ -1,30 +1,40 @@
 @page "/cook/calendar/month"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "cook,admin")]
+<!-- Restricts access so only cooks or admins can view the monthly calendar -->
 
 @using CSE325_visioncoders.Models
 @using CSE325_visioncoders.Services
 @using CSE325_visioncoders.Components.Shared
+@* Provides access to menus and operational events *@
 @inject CalendarService CalendarService
+
+@* Handles navigation between calendar views *@
 @inject NavigationManager Nav
 
 <PageHeader Icon="img/calendarIcon.svg" Title="Calendar" />
+<!-- Shared page header used for consistent UI structure -->
 
 <!-- HEADER -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3 class="m-0">Monthly Calendar — @currentMonth.ToString("MMMM yyyy")</h3>
+    <!-- Displays the active month in a readable format -->
 
     <button class="btn btn-outline-secondary" @onclick="GoToWeekly">
         ← Back to Weekly View
     </button>
+    <!-- Returns to the weekly calendar view -->
 </div>
 
 <!-- MONTH SELECTOR -->
 <div class="d-flex align-items-center mb-3">
     <button class="btn btn-outline-primary me-2" @onclick="PreviousMonth">◀ Previous</button>
+    <!-- Moves one month backward -->
 
     <h4 class="m-0">@currentMonth.ToString("MMMM yyyy")</h4>
+    <!-- Shows the name of the current month -->
 
     <button class="btn btn-outline-primary ms-2" @onclick="NextMonth">Next ▶</button>
+    <!-- Moves one month forward -->
 </div>
 
 <!-- MONTH GRID -->
@@ -34,6 +44,7 @@
             @foreach (var d in dayNames)
             {
                 <th class="text-center">@d</th>
+                <!-- Day labels used across the calendar grid -->
             }
         </tr>
     </thead>
@@ -41,22 +52,29 @@
     <tbody>
         @foreach (var week in weeks)
         {
+            <!-- Each row represents one week in the calendar view -->
             <tr>
                 @foreach (var day in week)
                 {
                     bool isCurrentMonth = day.Month == currentMonth.Month;
+                    <!-- Indicates whether the date belongs to the active month -->
+
                     bool isToday = day == DateTime.Today;
+                    <!-- Highlights the current real-world date -->
 
                     <td class="month-cell @(isCurrentMonth ? "" : "month-cell-other") @(isToday ? "today" : "")">
+                        <!-- Visual distinction for outside-month days and "today" -->
 
                         <!-- DATE -->
                         <div class="d-flex justify-content-between">
                             <strong>@day.Day</strong>
+                            <!-- Displays only the day number for compact readability -->
                         </div>
 
                         <!-- MENU DISHES -->
                         @if (menuByDate.TryGetValue(day.Date, out var menu))
                         {
+                            <!-- Shows any meals published for this specific date -->
                             @foreach (var dish in menu.Dishes)
                             {
                                 if (!string.IsNullOrWhiteSpace(dish.Name))
@@ -69,6 +87,8 @@
                         <!-- EVENTS -->
                         @{
                             var evs = CalendarService.GetEventsByDay(day.Date).ToList();
+                            /* Loads operational events scheduled on this date.
+                            Only icons are shown to keep the grid clean. */
                         }
 
                         @if (evs.Any())
@@ -77,11 +97,13 @@
                                 @foreach (var ev in evs.Take(3))
                                 {
                                     <span>@GetEventIcon(ev.Category)</span>
+                                    <!-- Displays up to 3 event icons for quick at-a-glance info -->
                                 }
 
                                 @if (evs.Count > 3)
                                 {
                                     <span>+@((evs.Count - 3))</span>
+                                    <!-- Shows the count of any additional hidden events -->
                                 }
                             </div>
                         }
@@ -90,7 +112,7 @@
                         <button class="btn btn-sm btn-outline-secondary mt-2" @onclick="() => GoToDay(day)">
                             View Day →
                         </button>
-
+                        <!-- Opens a detailed view for this specific date -->
                     </td>
                 }
             </tr>
@@ -100,19 +122,26 @@
 
 @code {
 
-    // Current month being viewed
+    // Tracks the month currently being displayed
     private DateTime currentMonth = DateTime.Today;
+    /* Used as the anchor for month navigation and grid calculations */
 
-    // Weeks in the month grid
+    // Matrix representing all weeks shown in the calendar
     private List<List<DateTime>> weeks = new();
-    private Dictionary<DateTime, MenuDay> menuByDate = new();
+    /* Six weeks are used to guarantee full month coverage even when
+    months start mid-week or spill into the next. */
 
-    // Day names for header
+    private Dictionary<DateTime, MenuDay> menuByDate = new();
+    /* Allows constant-time lookup of published menus for any date */
+
+    // Labels for the weekly header row
     private string[] dayNames = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+    /* Ensures weekday alignment across grid calculations */
 
     protected override void OnInitialized()
     {
         BuildMonthGrid();
+        // Generates the visual calendar grid for the current month
     }
 
     private void BuildMonthGrid()
@@ -121,52 +150,64 @@
         menuByDate.Clear();
 
         var firstDay = new DateTime(currentMonth.Year, currentMonth.Month, 1);
+        /* Identifies the month's starting point */
+
         int diff = (7 + (int)firstDay.DayOfWeek - 1) % 7;
+        /* Aligns the grid so that it always starts on Monday */
 
         var startGrid = firstDay.AddDays(-diff);
+        /* Determines which date appears in the first cell of the grid */
 
         for (int w = 0; w < 6; w++)
         {
             var week = new List<DateTime>();
             for (int d = 0; d < 7; d++)
                 week.Add(startGrid.AddDays(w * 7 + d));
+            // Sequentially adds all dates into a 6×7 matrix
 
             weeks.Add(week);
         }
 
         var start = weeks.First().First();
         var end = weeks.Last().Last();
+        /* Full range used to load menus/events efficiently in a single call */
 
         var menus = CalendarService.GetMenuForRange(start, end);
 
         foreach (var m in menus)
             menuByDate[m.Date.Date] = m;
+        /* Stores retrieved menus by date for quick rendering */
     }
 
     private void PreviousMonth()
     {
         currentMonth = currentMonth.AddMonths(-1);
         BuildMonthGrid();
+        // Recomputes the calendar when navigating backward
     }
 
     private void NextMonth()
     {
         currentMonth = currentMonth.AddMonths(1);
         BuildMonthGrid();
+        // Recomputes the grid when navigating forward
     }
 
     private void GoToWeekly()
     {
         Nav.NavigateTo("/cook/calendar");
+        // Returns to the weekly layout
     }
 
     private void GoToDay(DateTime day)
     {
         Nav.NavigateTo($"/cook/calendar/day/{day:yyyy-MM-dd}");
+        // Opens a dedicated view for the selected day
     }
 
     private string GetEventIcon(CalendarEventCategory cat)
     {
+        // Maps each event category to a visual icon used in both monthly and weekly views
         return cat switch
         {
             CalendarEventCategory.Purchase => "🛒",
@@ -201,10 +242,12 @@
     .month-cell-other {
         background-color: #f4f4f4;
         color: #888;
+        /* Provides a clear visual separation for days outside the current month */
     }
 
     .today {
         outline: 3px solid #0d6efd;
         background-color: #eaf2ff !important;
+        /* Highlight used to make today's date immediately identifiable */
     }
 </style>

@@ -78,8 +78,8 @@ builder.Services.AddSingleton<MenuDayService>();
 builder.Services.AddSingleton<CSE325_visioncoders.Services.MenuDayService>();
 builder.Services.AddHttpContextAccessor();
 
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+//var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+//builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 

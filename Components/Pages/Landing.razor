@@ -9,15 +9,78 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Nav
 
-<!-- Hero -->
-<h1>Welcome to LunchMate</h1>
-<p>Your meals organizer</p>
+<section class="landing-page">
+    <div class="landing-hero">
+        <div class="landing-copy">
+            <span class="landing-eyebrow">Professional meal coordination</span>
+            <h1>Manage lunch planning with less friction and more visibility.</h1>
+            <p class="landing-intro">
+                LunchMate gives cooks, admins, and customers one shared system for menus,
+                orders, and day-to-day coordination.
+            </p>
 
-<!-- CTAs -->
-<div style="margin-top:1rem;">
-  <a class="btn-login" href="/login">Login</a>
-  <a class="btn-login" href="/register">Register</a>
-</div>
+            <div class="landing-actions">
+                <a class="landing-button landing-button-primary" href="/login">Sign in</a>
+                <a class="landing-button landing-button-secondary" href="/register">Create account</a>
+            </div>
+
+            <div class="landing-metrics" aria-label="Platform highlights">
+                <div class="landing-metric-card">
+                    <strong>Menus</strong>
+                    <span>Publish meal options with clear descriptions and pricing.</span>
+                </div>
+                <div class="landing-metric-card">
+                    <strong>Orders</strong>
+                    <span>Track customer selections and reduce manual follow-up.</span>
+                </div>
+                <div class="landing-metric-card">
+                    <strong>Profiles</strong>
+                    <span>Keep each role aligned with the tools they actually need.</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="landing-panel">
+            <div class="landing-panel-card">
+                <span class="landing-panel-label">Why teams use LunchMate</span>
+                <h2>One workspace for the full lunch cycle.</h2>
+                <ul class="landing-feature-list">
+                    <li>Centralized meal publishing for cooks and admins</li>
+                    <li>Simple ordering flow for customers</li>
+                    <li>Clear visibility into inventory, schedules, and profiles</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <section class="landing-sections" aria-label="Core value">
+        <article class="landing-info-card">
+            <span class="landing-card-tag">01</span>
+            <h3>Structured operations</h3>
+            <p>Replace fragmented updates with a dedicated workspace for meals, people, and orders.</p>
+        </article>
+
+        <article class="landing-info-card">
+            <span class="landing-card-tag">02</span>
+            <h3>Faster daily decisions</h3>
+            <p>Give users quick access to what matters most instead of forcing them through manual steps.</p>
+        </article>
+
+        <article class="landing-info-card">
+            <span class="landing-card-tag">03</span>
+            <h3>Clean role-based flow</h3>
+            <p>Authenticated users are routed directly to the screens that match their responsibilities.</p>
+        </article>
+    </section>
+
+    <section class="landing-cta-band">
+        <div>
+            <span class="landing-eyebrow">Ready to start</span>
+            <h2>Launch your workspace and keep lunch service organized.</h2>
+        </div>
+        <a class="landing-button landing-button-primary" href="/register">Get started</a>
+    </section>
+</section>
 
 @code {
     // Auth state (cascaded from layout)

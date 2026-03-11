@@ -1,18 +1,26 @@
 @inherits LayoutComponentBase
 
+<div class="public-shell">
+    <aside class="public-media-panel" aria-hidden="true">
+        <img src="img/lunchvert.jpg" alt="" class="public-media-image" />
+        <div class="public-media-overlay">
+            <span class="public-media-kicker">LunchMate</span>
+            <h2>Meal coordination made clear, reliable, and simple.</h2>
+            <p>Built for cooks, admins, and customers who need a smoother lunch workflow.</p>
+        </div>
+    </aside>
 
+    <div class="public-content-panel">
+        <header class="public-header container">
+            <img src="img/lm_logo.svg" alt="LunchMate Logo" class="landingLogo" />
+        </header>
 
-<div class="land">
-    <img src="img/lunchvert.jpg" alt="lunch" class="landingImg">
-
-    <div class="public-wrapper">
-        <img src="img/lm_logo.svg" alt="LunchMate Logo" class="landingLogo" />
-        <main class="container" style="padding:2rem 0;">
+        <main class="container public-main">
             @Body
         </main>
 
-        <footer class="container" style="padding:2rem 0; border-top:1px solid #eee; margin-top:2rem;">
-            <small>© @(DateTime.Now.Year) LunchMate - VisionCoders - CSE 325 </small>
+        <footer class="public-footer container">
+            <small>&copy; @(DateTime.Now.Year) LunchMate | VisionCoders | CSE 325</small>
         </footer>
     </div>
 </div>

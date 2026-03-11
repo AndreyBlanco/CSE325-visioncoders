@@ -22,7 +22,7 @@ namespace CSE325_visioncoders.Services
         {
             var url = Environment.GetEnvironmentVariable("CLOUDINARY_URL");
             if (string.IsNullOrWhiteSpace(url))
-                throw new InvalidOperationException("CLOUDINARY_URL no está configurado.");
+                throw new InvalidOperationException("CLOUDINARY_URL is not configured.");
             _cloudinary = new Cloudinary(url);
             _cloudinary.Api.Secure = true;
         }

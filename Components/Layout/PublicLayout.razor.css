@@ -1,0 +1,113 @@
+.public-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: minmax(280px, 0.88fr) minmax(0, 1.12fr);
+    background:
+        radial-gradient(circle at top left, rgba(240, 127, 26, 0.18), transparent 32%),
+        linear-gradient(180deg, #fffaf0 0%, #f4f7fb 100%);
+}
+
+.public-media-panel {
+    position: relative;
+    overflow: hidden;
+    min-height: 100vh;
+    background-color: #102b40;
+    max-width: 40rem;
+}
+
+.public-media-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(1.05) contrast(1.02);
+}
+
+.public-media-overlay {
+    position: absolute;
+    inset: auto 2rem 2rem 2rem;
+    padding: 1.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 1.5rem;
+    background: linear-gradient(180deg, rgba(8, 24, 37, 0.55), rgba(8, 24, 37, 0.82));
+    color: #ffffff;
+    backdrop-filter: blur(10px);
+}
+
+.public-media-kicker {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    background-color: rgba(254, 199, 7, 0.18);
+    color: #ffe07b;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.public-media-overlay h2 {
+    margin: 1rem 0 0.75rem;
+    font-size: clamp(1.9rem, 2.2vw, 2.8rem);
+    line-height: 1.05;
+}
+
+.public-media-overlay p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.82);
+    max-width: 26rem;
+}
+
+.public-content-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.public-header {
+    padding-top: 2rem;
+}
+
+.landingLogo {
+    width: clamp(180px, 22vw, 260px);
+}
+
+.public-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding-top: 1.5rem;
+    padding-bottom: 2.5rem;
+}
+
+.public-footer {
+    padding-top: 1.25rem;
+    padding-bottom: 1.75rem;
+    color: #5d6b77;
+    border-top: 1px solid rgba(19, 57, 86, 0.08);
+}
+
+@media (max-width: 991.98px) {
+    .public-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .public-media-panel {
+        min-height: 16rem;
+        max-width: none;
+    }
+
+    .public-main {
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .public-media-overlay {
+        inset: auto 1rem 1rem 1rem;
+        padding: 1.25rem;
+    }
+
+    .public-header {
+        padding-top: 1.5rem;
+    }
+}
